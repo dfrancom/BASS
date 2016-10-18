@@ -35,7 +35,7 @@ Decomposes the variance of the BASS model into variance due to main effects, two
 Performs analytical Sobol' decomposition for each MCMC iteration in mcmc.use (each corresponds to a MARS model), yeilding a posterior distribution of sensitivity indices.  Can obtain Sobol' indices as a function of one functional variable.
 }
 \examples{
-# See examples in \\link{bass} documentation.
+# See examples in bass documentation.
 
 }
 \seealso{

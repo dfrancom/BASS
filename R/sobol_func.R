@@ -130,7 +130,7 @@ VuInt_des_func<-function(u,tl){ # sobol interaction variances
 #' @seealso \link{bass} for model fitting and \link{predict.bass} for prediction.
 #' @export
 #' @examples
-#' # See examples in \link{bass} documentation.
+#' # See examples in bass documentation.
 #'
 sobol<-function(mod,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=TRUE){ # note: requires inputs to be scaled to [0,1]
   if(mod$p==1 & !mod$func)
