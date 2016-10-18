@@ -10,7 +10,7 @@
 #    Mass function for
 #    Multivariate Wallenius' NonCentral Hypergeometric distribution
 # *****************************************************************************
-#' @useDynLib BMARS
+#' @useDynLib BASS
 dMWNCHypergeo <-
 function(
    x,                   # Number of balls drawn of each color, vector or matrix
@@ -28,5 +28,5 @@ function(
       xx <- as.integer(x);
    }
    .Call("dMWNCHypergeo", xx, as.integer(m), as.integer(n),
-   as.double(odds), as.double(precision), PACKAGE = "BMARS");
+   as.double(odds), as.double(precision), PACKAGE = "BASS");
 }

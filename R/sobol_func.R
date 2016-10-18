@@ -108,13 +108,13 @@ VuInt_des_func<-function(u,tl){ # sobol interaction variances
 
 
 
-#' @title BMARS Sensitivity Analysis
+#' @title BASS Sensitivity Analysis
 #'
-#' @description Decomposes the variance of the BMARS model into variance due to main effects, two way interactions, and so on, similar to the ANOVA decomposition for linear models.  Uses the Sobol' decomposition, which can be done analytically for MARS models.
-#' @param bmars a fitted model output from the \code{BMARS} function.
+#' @description Decomposes the variance of the BASS model into variance due to main effects, two way interactions, and so on, similar to the ANOVA decomposition for linear models.  Uses the Sobol' decomposition, which can be done analytically for MARS models.
+#' @param mod a fitted model output from the \code{bass} function.
 #' @param mcmc.use an integer vector indexing which MCMC iterations to use for sensitivity analysis.
-#' @param func.var an integer indicating which functional variable to make sensitivity indices a function of.  Disregard if \code{bmars} is non-functional or if scalar sensitivity indices are desired.
-#' @param xx.func.var grid for functional variable specified by \code{func.var}.  Disregard if \code{func.var} is not specified.  If \code{func.var} is specified and \code{xx.func.var} not specified, the grid used to fit \code{bmars} will be used.
+#' @param func.var an integer indicating which functional variable to make sensitivity indices a function of.  Disregard if \code{mod} is non-functional or if scalar sensitivity indices are desired.
+#' @param xx.func.var grid for functional variable specified by \code{func.var}.  Disregard if \code{func.var} is not specified.  If \code{func.var} is specified and \code{xx.func.var} not specified, the grid used to fit \code{mod} will be used.
 #' @param verbose logical; should progress be displayed?
 #' @details Performs analytical Sobol' decomposition for each MCMC iteration in mcmc.use (each corresponds to a MARS model), yeilding a posterior distribution of sensitivity indices.  Can obtain Sobol' indices as a function of one functional variable.
 #' @return If non-functional (\code{func.var = NULL}), a list with two elements:
@@ -127,15 +127,15 @@ VuInt_des_func<-function(u,tl){ # sobol interaction variances
 #'  \item{xx}{the grid used for the functional variable.}
 #'
 #' @keywords BMARS
-#' @seealso \link{BMARS} for model fitting and \link{predictBMARS} for prediction.
+#' @seealso \link{bass} for model fitting and \link{predict.bass} for prediction.
 #' @export
 #' @examples
-#' # See examples in BMARS documentation.
+#' # See examples in \link{bass} documentation.
 #'
-sobolBMARS<-function(bmars,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=TRUE){ # note: requires inputs to be scaled to [0,1]
-  if(bmars$p==1 & !bmars$func)
+sobol<-function(mod,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=TRUE){ # note: requires inputs to be scaled to [0,1]
+  if(mod$p==1 & !mod$func)
     stop('Sobol only used for multiple input models')
-  mcmc.use.poss<-1:((bmars$nmcmc-bmars$nburn)/bmars$thin)
+  mcmc.use.poss<-1:((mod$nmcmc-mod$nburn)/mod$thin)
   if(any(!(mcmc.use%in%mcmc.use.poss))){
     mcmc.use<-mcmc.use.poss
     warning('disregarding mcmc.use because of bad values')
@@ -148,9 +148,9 @@ sobolBMARS<-function(bmars,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=
     func<-F
   } else{
     func<-T
-    if(!bmars$func){
+    if(!mod$func){
       func<-F
-      warning('disregarding func.var because bmars parameter is not functional')
+      warning('disregarding func.var because mod parameter is not functional')
     }
   }
 
@@ -159,21 +159,21 @@ sobolBMARS<-function(bmars,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=
   if(func){
     #if(is.null(func.var))
     #  func.var<-1
-    if(!(func.var%in%(1:ncol(bmars$xx.func))))
+    if(!(func.var%in%(1:ncol(mod$xx.func))))
       stop('func.var in wrong range of values')
     if(is.null(xx.func.var)){
-      xx.func.var<-bmars$xx.func[,func.var,drop=F]
+      xx.func.var<-mod$xx.func[,func.var,drop=F]
     } else{
       #if(dim(xx.func.var)[2])
       rr<-range(xx.func.var)
-      if(rr[1]<bmars$range.func[1,func.var] | rr[2]>bmars$range.func[2,func.var])
-        warning(paste('range of func.var in BMARS function (',bmars$range.func[1,func.var],',',bmars$range.func[2,func.var],') is smaller than range of xx.func.var (',rr[1],',',rr[2],'), indicating some extrapolation',sep=''))
-      xx.func.var<-scale.range(xx.func.var,bmars$range.func[,func.var])
+      if(rr[1]<mod$range.func[1,func.var] | rr[2]>mod$range.func[2,func.var])
+        warning(paste('range of func.var in bass function (',mod$range.func[1,func.var],',',mod$range.func[2,func.var],') is smaller than range of xx.func.var (',rr[1],',',rr[2],'), indicating some extrapolation',sep=''))
+      xx.func.var<-scale.range(xx.func.var,mod$range.func[,func.var])
     }
 
-    return(sobolBMARS_des_func(bmars=bmars,mcmc.use=mcmc.use,verbose=verbose,func.var=func.var,xx.func.var=xx.func.var))
+    return(sobol_des_func(mod=mod,mcmc.use=mcmc.use,verbose=verbose,func.var=func.var,xx.func.var=xx.func.var))
   } else{
-    return(sobolBMARS_des(bmars=bmars,mcmc.use=mcmc.use,verbose=verbose)) # applies to both des & func as long as functional sobol indices are not desired
+    return(sobol_des(mod=mod,mcmc.use=mcmc.use,verbose=verbose)) # applies to both des & func as long as functional sobol indices are not desired
   }
 }
 
@@ -187,11 +187,11 @@ sobolBMARS<-function(bmars,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=
 
 
 
-getCombs<-function(bmars,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL){
-  vf<-bmars$vars.func[uniq.models,,]
+getCombs<-function(mod,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL){
+  vf<-mod$vars.func[uniq.models,,]
   if(!is.null(func.var))
     vf[vf==func.var]<-NA
-  n.un<-array(c(as.integer(bmars$vars.des[uniq.models,,]),as.integer(vf+bmars$pdes)),dim=c(nmodels,maxBasis,maxInt.tot))
+  n.un<-array(c(as.integer(mod$vars.des[uniq.models,,]),as.integer(vf+mod$pdes)),dim=c(nmodels,maxBasis,maxInt.tot))
   n.un<-apply(n.un,1:2,sort)
   n.un<-unique(c(n.un))
   n.un[sapply(n.un,length)==0]<-NULL
@@ -232,36 +232,36 @@ getCombs<-function(bmars,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL){
 
 
 
-get_tl<-function(bmars,mcmc.use.m,M,m,p,q,cs.num.ind,combs,func.var=NULL,xx.func.var=NULL){
-  a<-bmars$beta[mcmc.use.m,2:(M+1),drop=F] # basis coefficients excluding intercept
-  vf<-bmars$vars.func[m,1:M,]
+get_tl<-function(mod,mcmc.use.m,M,m,p,q,cs.num.ind,combs,func.var=NULL,xx.func.var=NULL){
+  a<-mod$beta[mcmc.use.m,2:(M+1),drop=F] # basis coefficients excluding intercept
+  vf<-mod$vars.func[m,1:M,]
   if(!is.null(func.var)){
     vf[vf==func.var]<-NA
     vf[which(vf>func.var,arr.ind = T)]<-vf[which(vf>func.var,arr.ind = T)]-1
   }
-  Kind<-cbind(bmars$vars.des[m,1:M,],vf+bmars$pdes)
+  Kind<-cbind(mod$vars.des[m,1:M,],vf+mod$pdes)
   #browser()
   if(M==1){
     Kind<-t(Kind)
   }
   t<-s<-matrix(0,nrow=M,ncol=p)
   for(k in 1:M){ # these matrices mimic the output of earth
-    n.int.des<-bmars$n.int.des[m,k]
-    knotInd.des<-bmars$knotInd.des[m,k,1:n.int.des]
-    vars.des<-bmars$vars.des[m,k,1:n.int.des]
-    t[k,vars.des]<-bmars$xx.des[cbind(knotInd.des,vars.des)]
-    s[k,vars.des]<-bmars$signs.des[m,k,1:n.int.des]
-    if(bmars$func){
-      n.int.func<-bmars$n.int.func[m,k]
-      knotInd.func<-bmars$knotInd.func[m,k,1:n.int.func]
-      vars.func<-bmars$vars.func[m,k,1:n.int.func]
-      t[k,vars.func+bmars$pdes]<-bmars$xx.func[cbind(knotInd.func,vars.func)]
-      s[k,vars.func+bmars$pdes]<-bmars$signs.func[m,k,1:n.int.func]
+    n.int.des<-mod$n.int.des[m,k]
+    knotInd.des<-mod$knotInd.des[m,k,1:n.int.des]
+    vars.des<-mod$vars.des[m,k,1:n.int.des]
+    t[k,vars.des]<-mod$xx.des[cbind(knotInd.des,vars.des)]
+    s[k,vars.des]<-mod$signs.des[m,k,1:n.int.des]
+    if(mod$func){
+      n.int.func<-mod$n.int.func[m,k]
+      knotInd.func<-mod$knotInd.func[m,k,1:n.int.func]
+      vars.func<-mod$vars.func[m,k,1:n.int.func]
+      t[k,vars.func+mod$pdes]<-mod$xx.func[cbind(knotInd.func,vars.func)]
+      s[k,vars.func+mod$pdes]<-mod$signs.func[m,k,1:n.int.func]
     }
   }
   ind<-1:p
   if(!is.null(func.var))
-    ind<-ind[-(bmars$pdes+func.var)]
+    ind<-ind[-(mod$pdes+func.var)]
   tl<-list(s=s[,ind,drop=F],t=t[,ind,drop=F],q=q,a=a,M=M,Kind=Kind,cs.num.ind=cs.num.ind,combs=combs,xx=xx.func.var) #temporary list
   return(tl)
 }
@@ -313,25 +313,25 @@ getTot<-function(ll,sob,names.ind,p,maxInt.tot,aa){
 
 
 
-sobolBMARS_des<-function(bmars,mcmc.use,verbose){
-  models<-bmars$model.lookup[mcmc.use] # only do the heavy lifting once for each model
+sobol_des<-function(mod,mcmc.use,verbose){
+  models<-mod$model.lookup[mcmc.use] # only do the heavy lifting once for each model
   uniq.models<-unique(models)
   nmodels<-length(uniq.models)
-  maxInt.tot<-bmars$maxInt.des
-  maxBasis<-dim(bmars$vars.des)[2]
-  q<-bmars$degree
+  maxInt.tot<-mod$maxInt.des
+  maxBasis<-dim(mod$vars.des)[2]
+  q<-mod$degree
   i<-1
-  p<-bmars$pdes
+  p<-mod$pdes
 
-  if(bmars$func){
-    p<-p+bmars$pfunc
-    maxInt.tot<-maxInt.tot+bmars$maxInt.func
+  if(mod$func){
+    p<-p+mod$pfunc
+    maxInt.tot<-maxInt.tot+mod$maxInt.func
   }
 
   ################################################
   # get combs & ll including functional variables
   ################################################
-  tt<-getCombs(bmars,uniq.models,nmodels,maxBasis,maxInt.tot)
+  tt<-getCombs(mod,uniq.models,nmodels,maxBasis,maxInt.tot)
   combs<-tt$combs
   names.ind<-tt$names.ind
   ll<-tt$ll
@@ -348,12 +348,12 @@ sobolBMARS_des<-function(bmars,mcmc.use,verbose){
     mod.ind<-mod.ind+1
     mcmc.use.m<-mcmc.use[models==m] # which part of mcmc.use does this correspond to?
     mod.m.ind<-i:(i+length(mcmc.use.m)-1)
-    M<-bmars$nbasis[mcmc.use.m][1] # number of basis functions in this model
+    M<-mod$nbasis[mcmc.use.m][1] # number of basis functions in this model
     if(M>0){
-      lens<-bmars$n.int.des[m,1:M]
-      if(bmars$func)
-        lens<-lens+bmars$n.int.func[m,1:M]
-      tl<-get_tl(bmars,mcmc.use.m,M,m,p,q,cs.num.ind,combs)
+      lens<-mod$n.int.des[m,1:M]
+      if(mod$func)
+        lens<-lens+mod$n.int.func[m,1:M]
+      tl<-get_tl(mod,mcmc.use.m,M,m,p,q,cs.num.ind,combs)
       tl<-add_tl(tl,p)
 
 
@@ -424,25 +424,25 @@ makeBasisMatrixVar<-function(i,nbasis,vars,signs,knots.ind,q,xxt,n.int,xx.train,
 }
 
 
-sobolBMARS_des_func<-function(bmars,mcmc.use,verbose,func.var,xx.func.var){
-  models<-bmars$model.lookup[mcmc.use] # only do the heavy lifting once for each model
+sobol_des_func<-function(mod,mcmc.use,verbose,func.var,xx.func.var){
+  models<-mod$model.lookup[mcmc.use] # only do the heavy lifting once for each model
   uniq.models<-unique(models)
   nmodels<-length(uniq.models)
-  maxInt.tot<-bmars$maxInt.des
-  maxBasis<-dim(bmars$vars.des)[2]
-  q<-bmars$degree
+  maxInt.tot<-mod$maxInt.des
+  maxBasis<-dim(mod$vars.des)[2]
+  q<-mod$degree
   i<-1
-  p<-bmars$pdes
+  p<-mod$pdes
 
-  if(bmars$func){
-    p<-p+bmars$pfunc
-    maxInt.tot<-maxInt.tot+bmars$maxInt.func
+  if(mod$func){
+    p<-p+mod$pfunc
+    maxInt.tot<-maxInt.tot+mod$maxInt.func
   }
 
   ################################################
   # get combs & ll including functional variables
   ################################################
-  tt<-getCombs(bmars,uniq.models,nmodels,maxBasis,maxInt.tot,func.var)
+  tt<-getCombs(mod,uniq.models,nmodels,maxBasis,maxInt.tot,func.var)
   combs<-tt$combs
   names.ind<-tt$names.ind
   ll<-tt$ll
@@ -459,21 +459,21 @@ sobolBMARS_des_func<-function(bmars,mcmc.use,verbose,func.var,xx.func.var){
     mod.ind<-mod.ind+1
     mcmc.use.m<-mcmc.use[models==m] # which part of mcmc.use does this correspond to?
     mod.m.ind<-i:(i+length(mcmc.use.m)-1)
-    M<-bmars$nbasis[mcmc.use.m][1] # number of basis functions in this model
+    M<-mod$nbasis[mcmc.use.m][1] # number of basis functions in this model
     if(M>0){
-      # lens<-bmars$n.int.des[m,1:M]
-      # if(bmars$func){
-      #   nint<-bmars$n.int.func[m,1:M]
-      #   ii<-which(bmars$vars.func[m,1:M,,drop=F]==func.var,arr.ind = T)[1,]
+      # lens<-mod$n.int.des[m,1:M]
+      # if(mod$func){
+      #   nint<-mod$n.int.func[m,1:M]
+      #   ii<-which(mod$vars.func[m,1:M,,drop=F]==func.var,arr.ind = T)[1,]
       #   nint[ii]<-nint[ii]-1
       #   lens<-lens+nint
       # }
 
-      tl<-get_tl(bmars,mcmc.use.m,M,m,p,q,cs.num.ind,combs,func.var,xx.func.var)
+      tl<-get_tl(mod,mcmc.use.m,M,m,p,q,cs.num.ind,combs,func.var,xx.func.var)
       tl<-add_tl(tl,p-1)
       lens<-apply(tl$Kind,1,function(x) length(na.omit(x)))
 
-      tl$tfunc.basis<-makeBasisMatrixVar(m,M,vars=bmars$vars.func,signs=bmars$signs.func,knots.ind=bmars$knotInd.func,q=bmars$degree,xxt=t(tl$xx),n.int=bmars$n.int.func,xx.train=bmars$xx.func,var=func.var)[-1,]
+      tl$tfunc.basis<-makeBasisMatrixVar(m,M,vars=mod$vars.func,signs=mod$signs.func,knots.ind=mod$knotInd.func,q=mod$degree,xxt=t(tl$xx),n.int=mod$n.int.func,xx.train=mod$xx.func,var=func.var)[-1,]
 
       #browser()
       var.tot<-Vu_des_func(1:(p-1),tl) # total variance

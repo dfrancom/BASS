@@ -1,12 +1,3 @@
-## BMARS11 - a unified function, should work for
-# functional output of multiple dimensions
-# non-functional output
-# categorical inputs
-# tempering (in parallel)
-# preconditioning - forget for now
-# continuing MCMC
-
-
 
 ########################################################################
 ## make basis functions
@@ -189,11 +180,11 @@ unscale.range<-function(x,r){
 
 
 ########################################################################
-## BMARS function
+## bass function
 ########################################################################
-#' @title Bayesian Multivariate Adaptive Regression Splines (BMARS)
+#' @title Bayesian Adaptive Spline Surfaces (BASS)
 #'
-#' @description Fits a BMARS model using RJMCMC.  Optionally uses parallel tempering to improve mixing.  Can be used with scalar or functional response.
+#' @description Fits a BASS model using RJMCMC.  Optionally uses parallel tempering to improve mixing.  Can be used with scalar or functional response.
 #' @param xx a data frame or matrix of predictors.  Categorical predictors should be included as factors.
 #' @param y  a response vector (scalar response) or matrix (functional response).
 #' @param maxInt integer for maximum degree of interaction in spline basis functions.  Defaults to the number of predictors, which could result in overfitting.
@@ -220,16 +211,16 @@ unscale.range<-function(x,r){
 #' @param curr.list list of starting models (one element for each temperature), likely output from a previous run.
 #' @param save.yhat logical; should predictions of training data be saved?
 #' @param verbose logical; should progress be displayed?
-#' @details Explores BMARS model space by RJMCMC.  The BMARS model has \deqn{y = f(x) + \epsilon,  \epsilon ~ N(0,\sigma^2)} \deqn{f(x) = a_0 + \sum_{m=1}^M a_m B_m(x)} and \eqn{B_m(x)} is a BMARS basis function (tensor product of spline basis functions). We use priors \deqn{a ~ N(0,\sigma^2/\tau (B'B)^{-1})} \deqn{M ~ Poisson(\lambda)} as well as the priors mentioned in the arguments above.
-#' @return An object of class 'BMARS'.  The other output will only be useful to the advanced user.  Rather, users may be interested in prediction and sensitivity analysis, which are obtained by passing the entire object to the predictBMARS or sobolBMARS functions.
+#' @details Explores BASS model space by RJMCMC.  The BASS model has \deqn{y = f(x) + \epsilon,  \epsilon ~ N(0,\sigma^2)} \deqn{f(x) = a_0 + \sum_{m=1}^M a_m B_m(x)} and \eqn{B_m(x)} is a BASS basis function (tensor product of spline basis functions). We use priors \deqn{a ~ N(0,\sigma^2/\tau (B'B)^{-1})} \deqn{M ~ Poisson(\lambda)} as well as the priors mentioned in the arguments above.
+#' @return An object of class 'bass'.  The other output will only be useful to the advanced user.  Rather, users may be interested in prediction and sensitivity analysis, which are obtained by passing the entire object to the predict.bass or sobol functions.
 #' @keywords BMARS
-#' @seealso \link{predictBMARS} for prediction and \link{sobolBMARS} for sensitivity analysis.
+#' @seealso \link{predict.bass} for prediction and \link{sobol} for sensitivity analysis.
 #' @export
 #' @import stats
 #' @import utils
 #' @example examples/examples.R
 #'
-BMARS<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,h1=10,h2=10,a.beta.prec=1,b.beta.prec=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,ncores=1,curr.list=NULL,save.yhat=TRUE,verbose=TRUE){
+bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,h1=10,h2=10,a.beta.prec=1,b.beta.prec=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,ncores=1,curr.list=NULL,save.yhat=TRUE,verbose=TRUE){
 
   ########################################################################
   ## setup
@@ -707,6 +698,6 @@ BMARS<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis
 
   #stopCluster(cluster)
   ret<-c(out.yhat,out,out.des,out.cat,out.func)
-  class(ret)<-'BMARS'
+  class(ret)<-'bass'
   return(ret)
 }

@@ -25,3 +25,7 @@ vignettes/*.pdf
 # Contact GitHub API Training Shop Blog About
 .Rproj.user
 .DS_Store
+*.so
+*.o
+*.Rbuildignore
+*.Rproj
