@@ -90,6 +90,7 @@ VuInt<-function(u,tl){ # sobol interaction variances
     ind<-((sum(tl$cs.num.ind[l-1])+1):tl$cs.num.ind[l])[apply(tl$combs[[l]],2,function(x) all(x%in%u))] # sum(cs.num.ind[l-1]) makes it 0 when it should be # this gets index for which combs are subsets of u
     add<-add+(-1)^(len-l)*rowSums(tl$temp[,ind,drop=F])
   }
+  add[abs(add)<1e-15]<-0
   if(any(add<0))
     browser()
   return(add)
@@ -297,13 +298,17 @@ add_tl<-function(tl,p){
 
 
 getTot<-function(ll,sob,names.ind,p,maxInt.tot,aa){
+  #browser()
+  vars.use<-unique(unlist(ll))
+  puse<-length(vars.use)
   ll[[1]]<-numeric(0) # for proper lengths below
-  tot<-sob[,1:p] # get total sensitivity indices
+  tot<-sob[,1:length(names.ind[[1]])]#matrix(0,nrow=nrow(sob),ncol=p)
+  #tot[,as.numeric(names.ind[[1]])]<-sob[,as.numeric(names.ind[[1]])] # get total sensitivity indices
   if(maxInt.tot>1){
-    for(pp in 1:p){
+    for(pp in 1:puse){
       for(l in (2:maxInt.tot)[!is.na(aa[-c(1,maxInt.tot+1)])]){
         tot[,pp]<-tot[,pp]+rowSums(
-          sob[,p+length(ll[[l-1]])+which(apply(do.call(rbind,ll[[l]]),1,function(r){pp%in%r})),drop=F]
+          sob[,puse+length(ll[[l-1]])+which(apply(do.call(rbind,ll[[l]]),1,function(r){vars.use[pp]%in%r})),drop=F]
         )
       }
     }
@@ -359,10 +364,11 @@ sobol_des<-function(mod,mcmc.use,verbose){
 
       var.tot<-Vu(1:p,tl) # total variance
       vars.used<-unique(unlist(na.omit(c(tl$Kind)))) # which variables are used?
+      vars.used<-sort(vars.used)
 
-      tl$temp<-matrix(0,nrow=length(mcmc.use.m),ncol=max(cs.num.ind)) # where we store all the integrals (not normalized by subtraction)
-      tl$temp[,vars.used]<-apply(t(vars.used),2,Vu,tl=tl)
-      sob[mod.m.ind,vars.used]<-tl$temp[,vars.used]
+      tl$temp<-matrix(0,nrow=length(mcmc.use.m),ncol=max(cs.num.ind)) # where we store all the integrals (not normalized by subtraction) - matches dim of sob
+      tl$temp[,which(combs[[1]]%in%vars.used)]<-apply(t(vars.used),2,Vu,tl=tl)
+      sob[mod.m.ind,1:cs.num.ind[1]]<-tl$temp[,1:cs.num.ind[1]]
 
       if(max(lens)>1){ # if there are any interactions
         for(l in 2:max(lens)){ # must go in order for it to work (tl$temp is made sequentially)
@@ -478,12 +484,17 @@ sobol_des_func<-function(mod,mcmc.use,verbose,func.var,xx.func.var){
       #browser()
       var.tot<-Vu_des_func(1:(p-1),tl) # total variance
       vars.used<-unique(unlist(na.omit(c(tl$Kind)))) # which variables are used?
-
+      vars.used<-sort(vars.used)
+      
       tl$temp<-array(0,dim=c(length(mcmc.use.m),max(cs.num.ind),length(xx.func.var))) # where we store all the integrals (not normalized by subtraction)
-      for(pp in vars.used){
+      for(pp in which(combs[[1]]%in%vars.used)){
         tl$temp[,pp,]<-Vu_des_func(pp,tl)#t(apply(t(vars.used),2,Vu_des_func,tl=tl))
       }
-      sob[mod.m.ind,vars.used,]<-tl$temp[,vars.used,]
+      sob[mod.m.ind,1:cs.num.ind[1],]<-tl$temp[,1:cs.num.ind[1],]
+      
+      #tl$temp<-matrix(0,nrow=length(mcmc.use.m),ncol=max(cs.num.ind)) # where we store all the integrals (not normalized by subtraction) - matches dim of sob
+      #tl$temp[,which(combs[[1]]%in%vars.used)]<-apply(t(vars.used),2,Vu,tl=tl)
+      #sob[mod.m.ind,1:cs.num.ind[1]]<-tl$temp[,1:cs.num.ind[1]]
 
 #browser()
       if(max(lens)>1){ # if there are any interactions

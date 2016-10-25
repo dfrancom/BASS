@@ -113,7 +113,8 @@ rigammaTemper<-function(n,shape,scale,temper){ # sample a tempered IG
 ## MCMC update
 ########################################################################
 
-updateMCMC<-function(curr,prior,data){
+
+updateMCMC<-function(curr,prior,data,funcs=funcs){
 
   ## RJMCMC update
 
@@ -125,14 +126,11 @@ updateMCMC<-function(curr,prior,data){
     u<-sample(2:3,size=1) # no birth
   }
   if(u==1){ # birth
-    #curr<-birth(curr,prior,data)
-    curr<-eval(parse(text=paste('birth',curr$type,sep='')))(curr,prior,data)
+    curr<-funcs$birth(curr,prior,data)
   } else if(u==2){ # death
-    #curr<-death(curr,prior,data)
-    curr<-eval(parse(text=paste('death',curr$type,sep='')))(curr,prior,data)
+    curr<-funcs$death(curr,prior,data)
   } else{ # change
-    #curr<-change(curr,prior,data)
-    curr<-eval(parse(text=paste('change',curr$type,sep='')))(curr,prior,data)
+    curr<-funcs$change(curr,prior,data)
   }
 
   ## Gibbs updates
@@ -475,6 +473,11 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
     }
   }
 
+  # define functions according to type.  Doing eval parse every time the functions were used is slow.
+  funcs<-list()
+  funcs$birth<-eval(parse(text=paste('birth',type,sep='')))
+  funcs$death<-eval(parse(text=paste('death',type,sep='')))
+  funcs$change<-eval(parse(text=paste('change',type,sep='')))
 
   # CHANGE FOR FUNC
   # do something like maxInt.tot<-maxInt.des+maxInt.func+maxInt.cat
@@ -524,7 +527,7 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
 
     ## update model for each temperature
     #curr.list<-parLapply(cluster,curr.list,updateMCMC)
-    curr.list<-parallel::mclapply(curr.list,updateMCMC,prior=prior,data=data,mc.preschedule=T,mc.cores=ncores)
+    curr.list<-parallel::mclapply(curr.list,updateMCMC,prior=prior,data=data,funcs=funcs,mc.preschedule=T,mc.cores=ncores)
     # TODO: DO SOMETHING LIKE THIS BUT KEEP EVERYTHING SEPARATE ON THE CLUSTER, all we need is lpost, cmod
 
     ## parallel tempering swap
