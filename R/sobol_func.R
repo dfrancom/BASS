@@ -199,7 +199,11 @@ getCombs<-function(mod,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL){
   temp<-list()
   for(ii in 1:length(n.un)){
     pp<-length(n.un[[ii]])
-    temp<-c(temp,do.call(c,sapply(1:pp,function(x) combn(n.un[[ii]],x,simplify=F))))
+    if(pp==1){
+      temp<-c(temp,n.un[[ii]])
+    } else{
+      temp<-c(temp,do.call(c,sapply(1:pp,function(x) combn(n.un[[ii]],x,simplify=F))))
+    }
   }
   temp<-lapply(temp,as.integer)
   n.un<-unique(c(n.un,unique(temp)))
@@ -224,6 +228,7 @@ getCombs<-function(mod,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL){
       ll[[ii]]<-split(combs[[ii]],rep(1:ncol(combs[[ii]]),each=nrow(combs[[ii]])))
     }
   }
+  #browser()
   num.ind<-sapply(ll,length)
   cs.num.ind<-cumsum(num.ind) # used for indexing
   return(list(combs=combs,names.ind=names.ind,ll=ll,num.ind=num.ind,cs.num.ind=cs.num.ind,aa=aa))
@@ -236,9 +241,10 @@ getCombs<-function(mod,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL){
 get_tl<-function(mod,mcmc.use.m,M,m,p,q,cs.num.ind,combs,func.var=NULL,xx.func.var=NULL){
   a<-mod$beta[mcmc.use.m,2:(M+1),drop=F] # basis coefficients excluding intercept
   vf<-mod$vars.func[m,1:M,]
+  #browser()
   if(!is.null(func.var)){
     vf[vf==func.var]<-NA
-    vf[which(vf>func.var,arr.ind = T)]<-vf[which(vf>func.var,arr.ind = T)]-1
+    #vf[which(vf>func.var,arr.ind = T)]<-vf[which(vf>func.var,arr.ind = T)]-1
   }
   Kind<-cbind(mod$vars.des[m,1:M,],vf+mod$pdes)
   #browser()
@@ -260,10 +266,14 @@ get_tl<-function(mod,mcmc.use.m,M,m,p,q,cs.num.ind,combs,func.var=NULL,xx.func.v
       s[k,vars.func+mod$pdes]<-mod$signs.func[m,k,1:n.int.func]
     }
   }
-  ind<-1:p
-  if(!is.null(func.var))
-    ind<-ind[-(mod$pdes+func.var)]
-  tl<-list(s=s[,ind,drop=F],t=t[,ind,drop=F],q=q,a=a,M=M,Kind=Kind,cs.num.ind=cs.num.ind,combs=combs,xx=xx.func.var) #temporary list
+  #ind<-1:p
+  if(!is.null(func.var)){
+    #ind<-ind[-(mod$pdes+func.var)]
+    s[,mod$pdes+func.var]<-t[,mod$pdes+func.var]<-0
+  }
+    
+  tl<-list(s=s,t=t,q=q,a=a,M=M,Kind=Kind,cs.num.ind=cs.num.ind,combs=combs,xx=xx.func.var) #temporary list
+  #tl<-list(s=s[,ind,drop=F],t=t[,ind,drop=F],q=q,a=a,M=M,Kind=Kind,cs.num.ind=cs.num.ind,combs=combs,xx=xx.func.var)
   return(tl)
 }
 
@@ -404,7 +414,9 @@ sobol_des<-function(mod,mcmc.use,verbose){
     cat('Total Sensitivity',timestamp(prefix='#--',suffix='--#',quiet=T),'\n')
 
   tot<-getTot(ll,sob,names.ind,p,maxInt.tot,tt$aa)
-  return(list(S=sob,T=tot))
+  ret<-list(S=sob,T=tot,func=F)#,var.tot=var.tot))
+  class(ret)<-'bassSob'
+  return(ret)
 }
 
 
@@ -454,6 +466,7 @@ sobol_des_func<-function(mod,mcmc.use,verbose,func.var,xx.func.var){
   ll<-tt$ll
   num.ind<-tt$num.ind
   cs.num.ind<-tt$cs.num.ind
+  #browser()
   ################################################
   sob<-sob2<-array(0,dim=c(length(mcmc.use),sum(num.ind),length(xx.func.var)))
 
@@ -476,20 +489,23 @@ sobol_des_func<-function(mod,mcmc.use,verbose,func.var,xx.func.var){
       # }
 
       tl<-get_tl(mod,mcmc.use.m,M,m,p,q,cs.num.ind,combs,func.var,xx.func.var)
-      tl<-add_tl(tl,p-1)
+      tl<-add_tl(tl,p)
       lens<-apply(tl$Kind,1,function(x) length(na.omit(x)))
 
       tl$tfunc.basis<-makeBasisMatrixVar(m,M,vars=mod$vars.func,signs=mod$signs.func,knots.ind=mod$knotInd.func,q=mod$degree,xxt=t(tl$xx),n.int=mod$n.int.func,xx.train=mod$xx.func,var=func.var)[-1,]
 
       #browser()
-      var.tot<-Vu_des_func(1:(p-1),tl) # total variance
+      var.tot<-Vu_des_func(1:p,tl) # total variance
       vars.used<-unique(unlist(na.omit(c(tl$Kind)))) # which variables are used?
       vars.used<-sort(vars.used)
       
       tl$temp<-array(0,dim=c(length(mcmc.use.m),max(cs.num.ind),length(xx.func.var))) # where we store all the integrals (not normalized by subtraction)
-      for(pp in which(combs[[1]]%in%vars.used)){
-        tl$temp[,pp,]<-Vu_des_func(pp,tl)#t(apply(t(vars.used),2,Vu_des_func,tl=tl))
+      jj=0
+      for(pp in vars.used){
+        jj=jj+1
+        tl$temp[,jj,]<-Vu_des_func(pp,tl)#t(apply(t(vars.used),2,Vu_des_func,tl=tl))
       }
+      #browser()
       sob[mod.m.ind,1:cs.num.ind[1],]<-tl$temp[,1:cs.num.ind[1],]
       
       #tl$temp<-matrix(0,nrow=length(mcmc.use.m),ncol=max(cs.num.ind)) # where we store all the integrals (not normalized by subtraction) - matches dim of sob
@@ -537,8 +553,9 @@ sobol_des_func<-function(mod,mcmc.use,verbose,func.var,xx.func.var){
   #sob<-as.data.frame(sob)
   #names(sob)<-unlist(names.ind) # give labels
 
-
-  return(list(S=sob2,S.var=sob,names.ind=unlist(names.ind),xx=tl$xx))#,var.tot=var.tot))
+  ret<-list(S=sob2,S.var=sob,names.ind=unlist(names.ind),xx=tl$xx,func=T)#,var.tot=var.tot))
+  class(ret)<-'bassSob'
+  return(ret)
 }
 
 

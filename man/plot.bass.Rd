@@ -17,10 +17,10 @@
 Generate diagnostic plots for BASS model fit.
 }
 \details{
-The first plot is posterior predicted vs observed, with intervals for predictions.  The second plot is a histogram of the residuals (of the posterior mean model), with a red curve showing the assumed Normal density (with posterior mean variance).
+The first two plots are trace plots for diagnosing convergence.  The third plot is posterior predicted vs observed, with intervals for predictions.  The fourth plot is a histogram of the residuals (of the posterior mean model), with a red curve showing the assumed Normal density (using posterior mean variance).
 }
 \examples{
-# use example path/relative/to/packge/root instead
+# See examples in bass documentation.
 
 }
 \seealso{

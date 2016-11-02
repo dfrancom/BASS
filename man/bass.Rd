@@ -86,19 +86,24 @@ x<-matrix(runif(n*10),n,10) #10 variables, only first 5 matter
 y<-rnorm(n,f(x),sigma)
 
 ## fit BMARS
-mod<-bass(x,y,maxInt=3,nmcmc=20000,nburn=19000)
+mod<-bass(x,y,maxInt=3,nmcmc=30000,nburn=20000,thin=10,npart=20)#,h2=1000,temp.ladder = c(1,.8,.65,.5,.4,.3,.23,.15,.1,.05),start.temper=1000)
 plot(mod) # plot fit
 
 ## prediction
-npred<-100
+npred<-1000
 xpred<-matrix(runif(npred*10),npred,10)
-pred<-predict(mod,xpred) # posterior predictive samples
-plot(f(xpred),colMeans(pred)); abline(a=0,b=1,col=2) # true values against posterior predictive means
+pred<-predict(mod,xpred,verbose = T) # posterior predictive samples
+true.y<-f(xpred)
+plot(true.y,colMeans(pred),xlab='true values',ylab='posterior predictive means'); abline(a=0,b=1,col=2)
+quants.pred<-apply(pred,2,quantile,probs=c(.025,.975))
+segments(true.y,quants.pred[1,],true.y,quants.pred[2,],col='lightgrey')
+points(true.y,colMeans(pred)); abline(a=0,b=1,col=2)
+mean(true.y>quants.pred[1,] & true.y<quants.pred[2,]) # empirical coverage of 95\% interval - undercoverage indicates tempering could help
+
 
 ## sobol
 sens<-sobol(mod)
-boxplot(sens$S)
-boxplot(sens$T)
+plot(sens,cex.axis=.5)
 
 
 ### functional example
@@ -125,17 +130,10 @@ matplot(t(apply(pred,2:3,mean)),type='l') # mean prediction
 
 ## sobol
 sens<-sobol(mod,mcmc.use = 1:10) # speed this up by specifing a few samples (mcmc.use)
-boxplot(sens$S)
-boxplot(sens$T) # note that the functional variable(s) are appended to the end of the list of variables (labeled 10 here)
+plot(sens) # note that the functional variable(s) are appended to the end of the list of variables (labeled 10 here)
 
-sens<-sobol(mod,mcmc.use=1:10,func.var=1) # speed this up by specifing a few samples (mcmc.use)
-dim(sens$S)
-matplot(t(apply(sens$S[1,,],2,cumsum)),type='l') # functional sensitivity indices for 1st posterior draw
-sens.mean<-apply(sens$S,2:3,mean) # posterior mean functional sensitivity indices
-matplot(t(apply(sens.mean,2,cumsum)),type='l')
-
-sens.mean.scale<-apply(sens$S.var,2:3,mean)
-matplot(t(apply(sens.mean.scale,2,cumsum)),type='l') # functional partitioning of variance (posterior mean)
+sens.func<-sobol(mod,mcmc.use=1:10,func.var=1) # speed this up by specifing a few samples (mcmc.use)
+plot(sens.func)
 }
 \seealso{
 \link{predict.bass} for prediction and \link{sobol} for sensitivity analysis.
