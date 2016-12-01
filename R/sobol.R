@@ -43,6 +43,10 @@ C2<-function(k,m,n,tl){ # integral of two pieces of tensor that have same variab
   }
 }
 
+C2Cat<-function(k,m,n,tl){ # k is variable (categorical), m & n are basis functions
+  return(length(intersect(tl$sub[[m]][[k]],tl$sub[[n]][[k]]))/tl$nlevels[k])
+}
+
 # Vu<-function(u,tl){ # sobol main effect variances - where most of the time is spent
 #   CCu<-apply(tl$C1.all.prod3[,,u,drop=F],1:2,prod) # TODO: utilize symmetry
 #   C2.temp<-apply(tl$C2.all2[,,u,drop=F],1:2,prod)
@@ -53,7 +57,7 @@ C2<-function(k,m,n,tl){ # integral of two pieces of tensor that have same variab
 VuMat<-function(u,tl){ # sobol main effect variances - where most of the time is spent
   CCu<-apply(tl$C1.all.prod3[,,u,drop=F],1:2,prod) # TODO: utilize symmetry
   C2.temp<-apply(tl$C2.all2[,,u,drop=F],1:2,prod)
-  mat<-tl$CC*(C2.temp/CCu-1)
+  mat<-tl$CC*(C2.temp/CCu-1) # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CLEARLY SOMETHING WRONG HERE - SHOULD NOT GET ALL C2.temp/CCu <= 1... I THINK THE CALCULATION IS RIGHT, SO NEED TO DOUBLE CHECK THE CATEGORICAL SOBOL - SHOULD PROBABLY BE TAKING AVERAGES INSTEAD OF SUMS...)  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
   #browser()
   return(mat)
 }
@@ -61,8 +65,8 @@ VuMat<-function(u,tl){ # sobol main effect variances - where most of the time is
 Vu<-function(u,tl){ # sobol main effect variances - where most of the time is spent
   mat<-VuMat(u,tl)
   out<-apply(tl$a,1,function(x) t(x)%*%mat%*%x)
-  # if(any(out<0))
-  #   browser()
+   if(any(out<0))
+     browser()
   return(out)
 }
 
@@ -190,9 +194,12 @@ sobol<-function(mod,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=TRUE){ 
 
 getCombs<-function(mod,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL){
   vf<-mod$vars.func[uniq.models,,]
-  if(!is.null(func.var))
+  sub<-0
+  if(!is.null(func.var)){
     vf[vf==func.var]<-NA
-  n.un<-array(c(as.integer(mod$vars.des[uniq.models,,]),as.integer(vf+mod$pdes)),dim=c(nmodels,maxBasis,maxInt.tot))
+    sub=-1
+  }
+  n.un<-array(c(as.integer(mod$vars.des[uniq.models,,]),as.integer(vf+sum(mod$pdes)),as.integer(mod$vars.cat[uniq.models,,]+sum(mod$pdes)+sum(mod$pfunc)+sub)),dim=c(nmodels,maxBasis,maxInt.tot))
   n.un<-apply(n.un,1:2,sort)
   n.un<-unique(c(n.un))
   n.un[sapply(n.un,length)==0]<-NULL
@@ -241,57 +248,130 @@ getCombs<-function(mod,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL){
 get_tl<-function(mod,mcmc.use.m,M,m,p,q,cs.num.ind,combs,func.var=NULL,xx.func.var=NULL){
   a<-mod$beta[mcmc.use.m,2:(M+1),drop=F] # basis coefficients excluding intercept
   vf<-mod$vars.func[m,1:M,]
+  pfunc<-sum(mod$pfunc)
   #browser()
   if(!is.null(func.var)){
     vf[vf==func.var]<-NA
+    pfunc<-pfunc-1
     #vf[which(vf>func.var,arr.ind = T)]<-vf[which(vf>func.var,arr.ind = T)]-1
   }
-  Kind<-cbind(mod$vars.des[m,1:M,],vf+mod$pdes)
+  
+  if(mod$des){
+    Kind<-cbind(mod$vars.des[m,1:M,],vf+mod$pdes)
+  } else if(mod$func){
+    Kind<-matrix(vf)
+  } else{
+    Kind<-NA
+  }
   #browser()
   if(M==1){
     Kind<-t(Kind)
   }
-  t<-s<-matrix(0,nrow=M,ncol=p)
-  for(k in 1:M){ # these matrices mimic the output of earth
-    n.int.des<-mod$n.int.des[m,k]
-    knotInd.des<-mod$knotInd.des[m,k,1:n.int.des]
-    vars.des<-mod$vars.des[m,k,1:n.int.des]
-    t[k,vars.des]<-mod$xx.des[cbind(knotInd.des,vars.des)]
-    s[k,vars.des]<-mod$signs.des[m,k,1:n.int.des]
-    if(mod$func){
-      n.int.func<-mod$n.int.func[m,k]
-      knotInd.func<-mod$knotInd.func[m,k,1:n.int.func]
-      vars.func<-mod$vars.func[m,k,1:n.int.func]
-      t[k,vars.func+mod$pdes]<-mod$xx.func[cbind(knotInd.func,vars.func)]
-      s[k,vars.func+mod$pdes]<-mod$signs.func[m,k,1:n.int.func]
+  p.df<-sum(mod$pdes)+sum(mod$pfunc)
+  t<-s<-matrix(0,nrow=M,ncol=sum(mod$pdes)+pfunc)
+  if(p.df>0){
+    for(k in 1:M){ # these matrices mimic the output of earth
+      if(mod$des){
+        n.int.des<-mod$n.int.des[m,k]
+        knotInd.des<-mod$knotInd.des[m,k,1:n.int.des]
+        vars.des<-mod$vars.des[m,k,1:n.int.des]
+        t[k,vars.des]<-mod$xx.des[cbind(knotInd.des,vars.des)]
+        s[k,vars.des]<-mod$signs.des[m,k,1:n.int.des]
+      }
+      if(pfunc>0){
+        n.int.func<-mod$n.int.func[m,k]
+        knotInd.func<-mod$knotInd.func[m,k,1:n.int.func]
+        vars.func<-mod$vars.func[m,k,1:n.int.func]
+        t[k,vars.func+sum(mod$pdes)]<-mod$xx.func[cbind(knotInd.func,vars.func)]
+        s[k,vars.func+sum(mod$pdes)]<-mod$signs.func[m,k,1:n.int.func]
+      }
+    }
+    #ind<-1:p
+    #if(!is.null(func.var)){
+      #ind<-ind[-(mod$pdes+func.var)]
+    #  s[,mod$pdes+func.var]<-t[,mod$pdes+func.var]<-0
+    #}
+  }
+    #browser()
+  tl<-list(s=s,t=t,q=q,a=a,M=M,Kind=Kind,cs.num.ind=cs.num.ind,combs=combs,xx=xx.func.var,pfunc=pfunc,cat=mod$cat,pdes=mod$pdes) #temporary list
+  #tl<-list(s=s[,ind,drop=F],t=t[,ind,drop=F],q=q,a=a,M=M,Kind=Kind,cs.num.ind=cs.num.ind,combs=combs,xx=xx.func.var)
+  return(tl)
+}
+
+add_tlCat<-function(tl,mod,mcmc.use.m,m){
+  # tl$sub.cnt is nbasis x pcat where each element is # of categories from this variable included in this basis function, or 0 if not included
+  # also need to change Kind, append cat variables
+  # tl$sub[[m]][[k]] should have categories for the mth basis function, kth variable
+  tl$pcat<-mod$pcat
+  tl$sub.cnt<-matrix(0,nrow=tl$M,ncol=tl$pcat)
+  #tl$sub.cnt[is.na(tl$sub.cnt)]<-0
+  tl$sub<-list()
+  for(mm in 1:tl$M){
+    vars<-na.omit(mod$vars.cat[m,mm,])
+    tl$sub.cnt[mm,vars]<-mod$sub.size[m,mm,mod$vars.cat[m,mm,]%in%vars]/mod$nlevels[vars]
+    tl$sub[[mm]]<-list()
+    for(k in 1:tl$pcat){
+      tl$sub[[mm]][[k]]<-NA
+      if(k %in% vars)
+        tl$sub[[mm]][[k]]<-mod$sub.list[[m]][[mm]][[which(vars==k)]]
     }
   }
-  #ind<-1:p
-  if(!is.null(func.var)){
-    #ind<-ind[-(mod$pdes+func.var)]
-    s[,mod$pdes+func.var]<-t[,mod$pdes+func.var]<-0
-  }
-    
-  tl<-list(s=s,t=t,q=q,a=a,M=M,Kind=Kind,cs.num.ind=cs.num.ind,combs=combs,xx=xx.func.var) #temporary list
-  #tl<-list(s=s[,ind,drop=F],t=t[,ind,drop=F],q=q,a=a,M=M,Kind=Kind,cs.num.ind=cs.num.ind,combs=combs,xx=xx.func.var)
+  #browser()
+  p.df<-sum(mod$pdes)+sum(tl$pfunc)
+  if(p.df>0)
+    tl$Kind<-cbind(tl$Kind,mod$vars.cat[m,1:tl$M,]+sum(mod$pdes)+sum(tl$pfunc)) # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Questionable...what about when mod$pdes is NULL? ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if(p.df==0)
+    tl$Kind<-mod$vars.cat[m,1:tl$M,]
+  
+  
+  
+  if(is.null(nrow(tl$Kind)))
+    tl$Kind<-matrix(tl$Kind)
+  tl$nlevels<-mod$nlevels
   return(tl)
 }
 
 add_tl<-function(tl,p){
   # TODO: these need better names
-  C1.all<-(1/(tl$q+1)*((tl$s+1)/2-tl$s*tl$t))*tl$s^2 # so I don't need C function anymore
+  p.df<-sum(tl$pdes)+tl$pfunc
+  p.use<-p.df+sum(tl$pcat)
+  if(p.df==0){
+    C1.all.cat<-tl$sub.cnt
+    C1.all<-C1.all.cat
+  } else{
+    C1.all<-(1/(tl$q+1)*((tl$s+1)/2-tl$s*tl$t))*tl$s^2 # so I don't need C function anymore
+    if(tl$cat){
+      # tl$sub.cnt is nbasis x pcat where each element is # of categories from this variable included in this basis function, or 0 if not included
+      # also need to change Kind, append cat variables
+      # tl$sub[[m]][[k]] should have categories for the mth basis function, kth variable
+      C1.all.cat<-tl$sub.cnt
+      C1.all<-cbind(C1.all,C1.all.cat) # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ NOTE: this is a different ordering than original ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    }
+  }
+
   C1.all2<-replace(C1.all,which(C1.all==0,arr.ind=T),1) # for products, make 0's 1's
   C1.all.prod<-apply(C1.all2,1,prod)
   tl$CC<-tcrossprod(C1.all.prod)
-  C2.all<-C1.all.prod2<-both.ind<-array(0,dim=c(tl$M,tl$M,p))
+  C2.all<-C1.all.prod2<-both.ind<-array(0,dim=c(tl$M,tl$M,p.use))
+  
   # TODO: probably more efficient way of storing since symmetric
   for(ii in 1:tl$M){
     for(jj in ii:tl$M){
       bb<-intersect(na.omit(tl$Kind[ii,]),na.omit(tl$Kind[jj,])) # variables that basis functions ii and jj have in common
       if(length(bb)>0){
-        both.ind[ii,jj,bb]<-both.ind[jj,ii,bb]<-1
-        C2.all[ii,jj,]<-C2.all[jj,ii,]<-apply(t(1:p),2,C2,m=ii,n=jj,tl=tl)
         C1.all.prod2[ii,jj,]<-C1.all.prod2[jj,ii,]<-C1.all[ii,]*C1.all[jj,] # pairwise products of C1.all
+        both.ind[ii,jj,bb]<-both.ind[jj,ii,bb]<-1
+        bb.cat<-bb[bb>p.df]
+        bb.des<-bb[bb<=p.df]
+        temp<-rep(0,p.use)
+        if(length(bb.des)>0){
+          #C2.all[ii,jj,]<-C2.all[jj,ii,]<-apply(t(1:p),2,C2,m=ii,n=jj,tl=tl)
+          temp[1:p.df]<-apply(t(1:p.df),2,C2,m=ii,n=jj,tl=tl)
+        }
+        if(length(bb.cat)>0){
+          temp[(p.df+1):p.use]<-apply(t(1:tl$pcat),2,C2Cat,m=ii,n=jj,tl=tl)
+        }
+        C2.all[ii,jj,]<-C2.all[jj,ii,]<-temp
       }
     }
   }
@@ -300,6 +380,7 @@ add_tl<-function(tl,p){
   tl$C1.all.prod3[C1.all.prod2==0]<-1
   tl$C2.all2<-C2.all
   tl$C2.all2[!as.logical(both.ind)]<-1
+  #browser()
   return(tl)
 }
 
@@ -332,16 +413,15 @@ sobol_des<-function(mod,mcmc.use,verbose){
   models<-mod$model.lookup[mcmc.use] # only do the heavy lifting once for each model
   uniq.models<-unique(models)
   nmodels<-length(uniq.models)
-  maxInt.tot<-mod$maxInt.des
-  maxBasis<-dim(mod$vars.des)[2]
+  maxInt.tot<-sum(mod$maxInt.des)+sum(mod$maxInt.cat)+sum(mod$maxInt.func)
+  maxBasis<-max(mod$nbasis)#dim(mod$vars.des)[2]
   q<-mod$degree
   i<-1
-  p<-mod$pdes
+  pdes<-sum(mod$pdes)
+  pcat<-sum(mod$pcat)
+  pfunc<-sum(mod$pfunc)
+  p<-pdes+pcat+pfunc
 
-  if(mod$func){
-    p<-p+mod$pfunc
-    maxInt.tot<-maxInt.tot+mod$maxInt.func
-  }
 
   ################################################
   # get combs & ll including functional variables
@@ -365,10 +445,16 @@ sobol_des<-function(mod,mcmc.use,verbose){
     mod.m.ind<-i:(i+length(mcmc.use.m)-1)
     M<-mod$nbasis[mcmc.use.m][1] # number of basis functions in this model
     if(M>0){
-      lens<-mod$n.int.des[m,1:M]
+      lens<-0
+      if(mod$des)
+        lens<-lens+mod$n.int.des[m,1:M]
       if(mod$func)
         lens<-lens+mod$n.int.func[m,1:M]
+      if(mod$cat)
+        lens<-lens+mod$n.int.cat[m,1:M]
       tl<-get_tl(mod,mcmc.use.m,M,m,p,q,cs.num.ind,combs)
+      if(tl$cat)
+        tl<-add_tlCat(tl,mod,mcmc.use.m,m)
       tl<-add_tl(tl,p)
 
 
@@ -446,17 +532,16 @@ sobol_des_func<-function(mod,mcmc.use,verbose,func.var,xx.func.var){
   models<-mod$model.lookup[mcmc.use] # only do the heavy lifting once for each model
   uniq.models<-unique(models)
   nmodels<-length(uniq.models)
-  maxInt.tot<-mod$maxInt.des
-  maxBasis<-dim(mod$vars.des)[2]
+  
+  maxInt.tot<-sum(mod$maxInt.des)+sum(mod$maxInt.cat)+sum(mod$maxInt.func)
+  maxBasis<-max(mod$nbasis)#dim(mod$vars.des)[2]
   q<-mod$degree
   i<-1
-  p<-mod$pdes
-
-  if(mod$func){
-    p<-p+mod$pfunc
-    maxInt.tot<-maxInt.tot+mod$maxInt.func
-  }
-
+  pdes<-sum(mod$pdes)
+  pcat<-sum(mod$pcat)
+  pfunc<-sum(mod$pfunc)
+  p<-pdes+pcat+pfunc
+  
   ################################################
   # get combs & ll including functional variables
   ################################################
@@ -489,15 +574,19 @@ sobol_des_func<-function(mod,mcmc.use,verbose,func.var,xx.func.var){
       # }
 
       tl<-get_tl(mod,mcmc.use.m,M,m,p,q,cs.num.ind,combs,func.var,xx.func.var)
+      if(tl$cat)
+        tl<-add_tlCat(tl,mod,mcmc.use.m,m)
       tl<-add_tl(tl,p)
       lens<-apply(tl$Kind,1,function(x) length(na.omit(x)))
 
       tl$tfunc.basis<-makeBasisMatrixVar(m,M,vars=mod$vars.func,signs=mod$signs.func,knots.ind=mod$knotInd.func,q=mod$degree,xxt=t(tl$xx),n.int=mod$n.int.func,xx.train=mod$xx.func,var=func.var)[-1,]
 
       #browser()
-      var.tot<-Vu_des_func(1:p,tl) # total variance
+      var.tot<-Vu_des_func(1:(p-1),tl) # total variance
       vars.used<-unique(unlist(na.omit(c(tl$Kind)))) # which variables are used?
       vars.used<-sort(vars.used)
+      
+      #browser()
       
       tl$temp<-array(0,dim=c(length(mcmc.use.m),max(cs.num.ind),length(xx.func.var))) # where we store all the integrals (not normalized by subtraction)
       jj=0

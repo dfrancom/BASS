@@ -1,7 +1,7 @@
 ########################################################################
 ## generate a cadidate basis (birth, change)
 ########################################################################
-genCandBasis<-function(minInt,maxInt,I.vec,z.vec,p,xxt,q,xx.unique.ind,vars.len){
+genCandBasis<-function(minInt,maxInt,I.vec,z.vec,p,xxt,q,xx.unique.ind,vars.len,prior){
   # get number of variables in interaction
   n.int<-sample(minInt:maxInt,size=1,prob=I.vec)
   if(n.int==0)
@@ -22,10 +22,36 @@ genCandBasis<-function(minInt,maxInt,I.vec,z.vec,p,xxt,q,xx.unique.ind,vars.len)
   #knots<-sapply(1:n.int,function(nn) xxt.unique[[vars[nn]]][knotInd[nn]])
   knots<-xxt[cbind(vars,knotInd)]
   basis<-makeBasis(signs,vars,knots,xxt,q)
-  lpbmcmp<-logProbChangeMod(n.int,vars,I.vec,z.vec,p,vars.len,maxInt)
+  lpbmcmp<-logProbChangeMod(n.int,vars,I.vec,z.vec,p,vars.len,maxInt,prior$miC)
 
   return(list(basis=basis,n.int=n.int,signs=signs,vars=vars,knotInd=knotInd,knots=knots,lbmcmp=lpbmcmp))
 }
+
+genCandBasisCat<-function(minInt,maxInt,I.vec,z.vec,p,xx,nlevels,levels,prior){
+  # get number of variables in interaction
+  n.int<-sample(minInt:maxInt,size=1,prob=I.vec)
+  if(n.int==0)
+    return(list(basis=rep(1,nrow(xx)),n.int=n.int,lbmcmp=0,sub=list(NA)))
+  # get vars, subsets
+  if(n.int==1){
+    vars<-sample(1:p,size=1)
+  } else{
+    vars<-sort(sample(1:p,size=n.int,prob=z.vec,replace=F))
+  }
+  sub.size<-NA # for each of vars, number of categories included in subset
+  sub<-list() # actual subsets
+  for(ii in 1:n.int){
+    sub.size[ii]<-sample(1:(nlevels[vars[ii]]-1),size=1) # sample the size of the subset
+    sub[[ii]]<-sample(levels[[vars[ii]]],size=sub.size[ii]) # sample the subset
+  }
+  # make basis, get reversibility term
+  basis<-makeBasisCat(vars,sub,xx)
+  lpbmcmp<-logProbChangeModCat(n.int,vars,I.vec,z.vec,p,nlevels,sub.size,maxInt,prior$miC)
+  if(is.na(lpbmcmp))
+    browser()
+  return(list(basis=basis,n.int=n.int,vars=vars,sub.size=sub.size,sub=sub,lbmcmp=lpbmcmp))
+}
+
 
 
 genBasisChange<-function(curr,basis,int.change,xxt,q,knots,knotInd,signs,vars,xx.unique.ind){
@@ -37,6 +63,14 @@ genBasisChange<-function(curr,basis,int.change,xxt,q,knots,knotInd,signs,vars,xx
 
   basis<-makeBasis(signs,vars,knots,xxt,q)
   return(list(knots=knots,knotInd=knotInd,signs=signs,basis=basis))
+}
+
+genBasisChangeCat<-function(curr,basis,int.change,xx,nlevels,levels,sub.size,sub,vars){
+  sub.size[int.change]<-sample(1:(nlevels[vars[int.change]]-1),size=1)
+  sub[[int.change]]<-sample(levels[[vars[int.change]]],size=sub.size[int.change])
+  
+  basis<-makeBasisCat(vars,sub,xx)
+  return(list(sub.size=sub.size,sub=sub,basis=basis))
 }
 
 ########################################################################
@@ -95,7 +129,25 @@ addBasisFunc<-function(curr,cand,qf.cand.list,prior){
   return(curr)
 }
 addBasisCat<-function(curr,cand,qf.cand.list,prior){
-  # needs to be added
+  curr$n.int.cat[curr$nbasis]<-cand$n.int
+  fill<-rep(NA,prior$maxInt.cat-cand$n.int)
+  curr$sub.size<-rbind(curr$sub.size,c(cand$sub.size,fill))
+  #browser()
+  curr$sub.list[[curr$nbasis]]<-cand$sub #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ maybe should use a design matrix style for factors instead of this list...wouldn't need to use %in%
+  curr$vars.cat<-rbind(curr$vars.cat,c(cand$vars,fill))
+  
+  curr$I.star.cat[cand$n.int+prior$miC]<-curr$I.star.cat[cand$n.int+prior$miC]+1
+  curr$I.vec.cat<-curr$I.star.cat/sum(curr$I.star.cat)
+  curr$z.star.cat[cand$vars]<-curr$z.star.cat[cand$vars]+1
+  curr$z.vec.cat<-curr$z.star.cat/sum(curr$z.star.cat)
+  
+  # basis functions
+  curr$cat.basis<-cbind(curr$cat.basis,cand$basis)
+  return(curr)
+}
+
+addBasisDC<-function(curr,dc){
+  curr$dc.basis<-cbind(curr$dc.basis,dc)
   return(curr)
 }
 
@@ -149,7 +201,20 @@ deleteBasisFunc<-function(curr,basis,ind,qf.cand.list,I.star,I.vec,z.star,z.vec)
   return(curr)
 }
 deleteBasisCat<-function(curr,basis,ind,qf.cand.list,I.star,I.vec,z.star,z.vec){
-
+  curr$n.int.cat<-curr$n.int.cat[-basis]
+  curr$sub.size<-curr$sub.size[-basis,,drop=F]
+  curr$sub.list[[basis]]<-NULL
+  curr$vars.cat<-curr$vars.cat[-basis,,drop=F]
+  curr$I.star.cat<-I.star
+  curr$I.vec.cat<-I.vec
+  curr$z.star.cat<-z.star
+  curr$z.vec.cat<-z.vec
+  # basis functions
+  curr$cat.basis<-curr$cat.basis[,-(basis+1),drop=F]
+  return(curr)
+}
+deleteBasisDC<-function(curr,basis.ind){
+  curr$dc.basis<-curr$dc.basis[,-(basis.ind+1),drop=F]
   return(curr)
 }
 
@@ -188,6 +253,14 @@ changeBasisFunc<-function(curr,cand,basis,qf.cand.list,XtX.cand,Xty.cand){
   return(curr)
 }
 changeBasisCat<-function(curr,cand,basis,qf.cand.list,XtX.cand,Xty.cand){
-
+  # basis characteristics
+  curr$sub.size[basis,1:curr$n.int.cat[basis]]<-cand$sub.size
+  curr$sub.list[[basis]]<-cand$sub
+  # basis functions
+  curr$cat.basis[,basis+1]<-cand$basis
+  return(curr)
+}
+changeBasisDC<-function(curr,cand,basis){
+  curr$dc.basis[,basis+1]<-cand
   return(curr)
 }

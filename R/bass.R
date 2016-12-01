@@ -26,14 +26,23 @@ makeBasis<-function(signs,vars,knots,datat,degree){ #faster than apply
   }
 }
 
+makeBasisCat<-function(vars,sub,data){
+  temp<-1
+  for(ii in 1:length(vars)){
+    temp<-temp*as.numeric(data[,vars[ii]] %in% sub[[ii]])
+  }
+  #browser()
+  return(temp)
+}
+
 ########################################################################
 ## functions used in MCMC
 ########################################################################
 
 # CHANGE FOR FUNC
-logProbChangeMod<-function(n.int,vars,I.vec,z.vec,p,vars.len,maxInt){ # reversibility term
+logProbChangeMod<-function(n.int,vars,I.vec,z.vec,p,vars.len,maxInt,miC){ # reversibility term
   if(n.int==1){ #for acceptance ratio
-    out<-log(I.vec[1])-log(2*p*vars.len[vars]) + #proposal
+    out<-log(I.vec[n.int+miC])-log(2*p*vars.len[vars]) + #proposal
       log(2*p*vars.len[vars])+log(maxInt) # prior
   } else{
     # perms<-permutations(n.int,n.int,vars)
@@ -44,14 +53,35 @@ logProbChangeMod<-function(n.int,vars,I.vec,z.vec,p,vars.len,maxInt){ # reversib
     x[vars]<-1
     #lprob.vars.noReplace<-log(BiasedUrn::dMWNCHypergeo(x,rep(1,p),n.int,z.vec)) - do this in combination with imports: BiasedUrn in DESCRIPTION file, but that has a limit to MAXCOLORS
     lprob.vars.noReplace<-log(dMWNCHypergeo(x,rep(1,p),n.int,z.vec))
-    out<-log(I.vec[n.int])+lprob.vars.noReplace-n.int*log(2)-sum(log(vars.len[vars])) + # proposal
+    out<-log(I.vec[n.int+miC])+lprob.vars.noReplace-n.int*log(2)-sum(log(vars.len[vars])) + # proposal
       +n.int*log(2)+sum(log(vars.len[vars]))+lchoose(p,n.int)+log(maxInt) # prior
   }
   return(out)
 }
 
+
+logProbChangeModCat<-function(n.int,vars,I.vec,z.vec,p,nlevels,sub.size,maxInt,miC){
+  if(n.int==1){ #for acceptance ratio
+    out<-log(I.vec[n.int+miC])-log(p*(nlevels[vars]-1))-lchoose(nlevels[vars],sub.size[1:n.int]) + # proposal
+      log(p*(nlevels[vars]-1))+lchoose(nlevels[vars],sub.size[1:n.int])+log(maxInt) # prior
+  } else{
+    x<-rep(0,p)
+    x[vars]<-1
+    lprob.vars.noReplace<-log(dMWNCHypergeo(x,rep(1,p),n.int,z.vec))
+    out<-log(I.vec[n.int+miC])+lprob.vars.noReplace-n.int*sum(log(nlevels[vars]-1))-sum(lchoose(nlevels[vars],sub.size[1:n.int])) + # proposal
+      n.int*sum(log(nlevels[vars]-1))+sum(lchoose(nlevels[vars],sub.size[1:n.int]))+lchoose(p,n.int)+log(maxInt) # prior
+  }
+  if(length(out)>1)
+    browser()
+  if(is.na(out))
+    browser()
+  return(out)
+}
+
 # CHANGE FOR FUNC
 lp<-function(curr,prior,data){ # log posterior
+  if(curr$nbasis==0)
+    return(NA)
   tt<-(
     - (curr$s2.rate+prior$g2)/curr$s2
     -(data$n/2+1+(curr$nbasis+1)/2 -prior$g1)*log(curr$s2)
@@ -70,8 +100,13 @@ lp<-function(curr,prior,data){ # log posterior
     )
   }
   if(data$cat){
-    # tt<-tt+(
-    # )
+    tt<-tt+(
+      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CHECK THIS
+      - sum(sapply(1:curr$nbasis,function(i) curr$n.int.cat[i]*sum(log(data$nlevels[na.omit(curr$vars.cat[i,])]-1))))
+      - sum(sapply(1:curr$nbasis,function(i) sum(lchoose(data$nlevels[na.omit(curr$vars.cat[i,])],curr$sub.size[i,1:curr$n.int.cat[i]]))))
+      - sum(lchoose(data$pcat,curr$n.int.cat))
+      - curr$nbasis*log(prior$maxInt.cat)
+    )
   }
   if(data$func){
     tt<-tt+(
@@ -133,6 +168,7 @@ updateMCMC<-function(curr,prior,data,funcs=funcs){
     curr<-funcs$change(curr,prior,data)
   }
 
+  #print(c(curr$qf))
   ## Gibbs updates
 
   # beta
@@ -176,6 +212,24 @@ unscale.range<-function(x,r){
   x*(r[2]-r[1])+r[1]
 }
 
+getYhat_des<-function(curr,nb){
+  curr$des.basis%*%curr$beta
+}
+getYhat_cat<-function(curr,nb){
+  curr$cat.basis%*%curr$beta
+}
+getYhat_des_cat<-function(curr,nb){
+  curr$dc.basis%*%curr$beta
+}
+getYhat_des_func<-function(curr,nb){
+  tcrossprod(curr$des.basis%*%diag(c(curr$beta),nb+1),curr$func.basis)
+}
+getYhat_cat_func<-function(curr,nb){
+  tcrossprod(curr$cat.basis%*%diag(c(curr$beta),nb+1),curr$func.basis)
+}
+getYhat_des_cat_func<-function(curr,nb){
+  tcrossprod(curr$dc.basis%*%diag(c(curr$beta),nb+1),curr$func.basis)
+}
 
 ########################################################################
 ## bass function
@@ -218,7 +272,7 @@ unscale.range<-function(x,r){
 #' @import utils
 #' @example examples/examples.R
 #'
-bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,h1=10,h2=10,a.beta.prec=1,b.beta.prec=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,ncores=1,curr.list=NULL,save.yhat=TRUE,verbose=TRUE){
+bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,h1=10,h2=10,a.beta.prec=1,b.beta.prec=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,ncores=1,curr.list=NULL,save.yhat=TRUE,verbose=TRUE){
 
   ########################################################################
   ## setup
@@ -274,8 +328,8 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
     cat<-T
     if(all(cx.factor))
       des<-F
-    xx.des<-as.matrix(xx[,!cx.factor])
-    xx.cat<-xx[,cx.factor]
+    xx.des<-as.matrix(xx[,!cx.factor,drop=F])
+    xx.cat<-xx[,cx.factor,drop=F]
   } else{
     cat<-F
     xx.des<-as.matrix(xx)
@@ -319,13 +373,7 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
 
 
 
-  npart.des<-npart
-  if(is.null(npart.des)){
-    npart.des<-1
-  }
-  if(is.null(npart.func)){
-    npart.func<-1
-  }
+
 
   # data object
   data<-list()
@@ -352,6 +400,11 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
       data$vars.len.func[i]<-length(data$xxt.func.unique[[i]])
     }
   }
+  if(cat){
+    data$levels<-lapply(xx.cat,levels)
+    data$nlevels<-sapply(data$levels,length)
+    data$xx.cat<-xx.cat
+  }
   data$pdes<-pdes
   data$pfunc<-pfunc
   data$pcat<-pcat
@@ -370,18 +423,25 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
   data$death.prob<-1/3
   data$temp.ladder<-temp.ladder
 
+  npart.des<-npart
+  if(is.null(npart.des)){
+    npart.des<-min(20,.1*data$n)
+  }
+  if(is.null(npart.func) & func){
+    npart.func<-min(20,.1*data$nfunc)
+  }
 
-
+    
 
   maxBasis<-min(maxBasis,data$n) # can't have more basis functions than data points
-  maxInt.des<-min(maxInt,pdes) # can't have more interactions than variables
-  #maxInt.cat<-min(maxInt.cat,pcat)
+  maxInt.des<-min(maxInt,pdes) # can't have more interactions than variables #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ may want to change this...
+  maxInt.cat<-min(maxInt.cat,pcat)
   maxInt.func<-min(maxInt.func,pfunc)
 
   # prior object
   prior<-list()
   prior$maxInt.des<-maxInt.des
-  #prior$maxInt.cat<-maxInt.cat
+  prior$maxInt.cat<-maxInt.cat
   prior$maxInt.func<-maxInt.func
   prior$q<-degree
   prior$npart.des<-npart.des
@@ -415,13 +475,13 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
         curr.list[[i]]$z.vec.des<-curr.list[[i]]$z.star.des/sum(curr.list[[i]]$z.star.des)
         curr.list[[i]]$des.basis<-matrix(rep(1,data$ndes))
       }
-      # if(cat){
-      #   curr.list[[i]]$I.star.cat<-rep(w1,prior$maxInt.cat+prior$miC)
-      #   curr.list[[i]]$I.vec.cat<-curr.list[[i]]$I.star.cat/sum(curr.list[[i]]$I.star.cat)
-      #   curr.list[[i]]$z.star.cat<-rep(w2,data$pcat)
-      #   curr.list[[i]]$z.vec.cat<-curr.list[[i]]$z.star.cat/sum(curr.list[[i]]$z.star.cat)
-      #   curr.list[[i]]$cat.basis<-matrix(rep(1,data$ndes))
-      # }
+      if(cat){
+        curr.list[[i]]$I.star.cat<-rep(w1,prior$maxInt.cat+prior$miC)
+        curr.list[[i]]$I.vec.cat<-curr.list[[i]]$I.star.cat/sum(curr.list[[i]]$I.star.cat)
+        curr.list[[i]]$z.star.cat<-rep(w2,data$pcat)
+        curr.list[[i]]$z.vec.cat<-curr.list[[i]]$z.star.cat/sum(curr.list[[i]]$z.star.cat)
+        curr.list[[i]]$cat.basis<-matrix(rep(1,data$ndes))
+      }
       if(func){
         curr.list[[i]]$I.star.func<-rep(w1,prior$maxInt.func+prior$miC)
         curr.list[[i]]$I.vec.func<-curr.list[[i]]$I.star.func/sum(curr.list[[i]]$I.star.func)
@@ -445,11 +505,10 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
       curr.list[[i]]$vars.des<-matrix(integer(0),ncol=maxInt.des)
       curr.list[[i]]$n.int.des<-NA
 
-      # curr.list[[i]]$knots.cat<-matrix(numeric(0),ncol=maxInt.cat)
-      # curr.list[[i]]$knotInd.cat<-matrix(integer(0),ncol=maxInt.cat)
-      # curr.list[[i]]$signs.cat<-matrix(integer(0),ncol=maxInt.cat)
-      # curr.list[[i]]$vars.cat<-matrix(integer(0),ncol=maxInt.cat)
-      # curr.list[[i]]$n.int.cat<-NA
+      curr.list[[i]]$sub.list<-list()
+      curr.list[[i]]$sub.size<-matrix(integer(0),ncol=maxInt.cat)
+      curr.list[[i]]$vars.cat<-matrix(integer(0),ncol=maxInt.cat)
+      curr.list[[i]]$n.int.cat<-NA
 
       curr.list[[i]]$knots.func<-matrix(numeric(0),ncol=maxInt.func)
       curr.list[[i]]$knotInd.func<-matrix(integer(0),ncol=maxInt.func)
@@ -478,7 +537,8 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
   funcs$birth<-eval(parse(text=paste('birth',type,sep='')))
   funcs$death<-eval(parse(text=paste('death',type,sep='')))
   funcs$change<-eval(parse(text=paste('change',type,sep='')))
-
+  funcs$getYhat<-eval(parse(text=paste('getYhat',type,sep='')))
+  
   # CHANGE FOR FUNC
   # do something like maxInt.tot<-maxInt.des+maxInt.func+maxInt.cat
   # then have an index, int.des<-1:maxInt.des; int.func<-maxInt.des + 1:maxInt.func; int.cat<-maxInt.des+maxInt.func
@@ -487,10 +547,11 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
     signs.des<-knotInd.des<-vars.des<-array(dim=c(nmod.max,maxBasis,maxInt.des)) # truncate when returning at end of function
     n.int.des<-matrix(nrow=nmod.max,ncol=maxBasis) # degree of interaction
   }
-  # if(cat){
-  #   signs.cat<-knotInd.cat<-vars.cat<-array(dim=c(nmod.max,maxBasis,maxInt.cat))
-  #   n.int.cat<-matrix(nrow=nmod.max,ncol=maxBasis)
-  # }
+  if(cat){
+    sub.list<-list() # this is big...
+    sub.size<-vars.cat<-array(dim=c(nmod.max,maxBasis,maxInt.cat))
+    n.int.cat<-matrix(nrow=nmod.max,ncol=maxBasis)
+  }
   if(func){
     signs.func<-knotInd.func<-vars.func<-array(dim=c(nmod.max,maxBasis,maxInt.func))
   # arrays use less space, esp integer arrays
@@ -529,6 +590,12 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
     #curr.list<-parLapply(cluster,curr.list,updateMCMC)
     curr.list<-parallel::mclapply(curr.list,updateMCMC,prior=prior,data=data,funcs=funcs,mc.preschedule=T,mc.cores=ncores)
     # TODO: DO SOMETHING LIKE THIS BUT KEEP EVERYTHING SEPARATE ON THE CLUSTER, all we need is lpost, cmod
+    
+    #if(i%%1000==0)
+    #plot(c(data$xxt.des),data$y,col=as.numeric(unlist(data$xx.cat)))
+    #points(c(data$xxt.des),curr.list[[1]]$dc.basis%*%curr.list[[1]]$beta,col=as.numeric(unlist(data$xx.cat)),cex=.5)
+    #browser()
+    
 
     ## parallel tempering swap
     if(i>start.temper){# & (i%%20==0)){ #only start after a certain point, and only try every 20
@@ -574,12 +641,10 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
       lam[keep.sample]<-curr.list[[cold.chain]]$lam
       beta.prec[keep.sample]<-curr.list[[cold.chain]]$beta.prec
       if(save.yhat){
-        if(des & func){
-          yhat.current<-tcrossprod(curr.list[[cold.chain]]$des.basis%*%diag(c(curr.list[[cold.chain]]$beta),nb+1),curr.list[[cold.chain]]$func.basis)
+        yhat.current<-funcs$getYhat(curr.list[[cold.chain]],nb)
+        if(func){
           yhat[keep.sample,,]<-yhat.current
-        }
-        if(des & !func){
-          yhat.current<-curr.list[[cold.chain]]$des.basis%*%curr.list[[cold.chain]]$beta
+        } else{
           yhat[keep.sample,]<-yhat.current
         }
         yhat.sum<-yhat.sum+yhat.current
@@ -597,8 +662,8 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
           }
           if(cat){
             vars.cat[n.models,1:nb,]<-as.integer(curr.list[[cold.chain]]$vars.cat)
-            signs.cat[n.models,1:nb,]<-as.integer(curr.list[[cold.chain]]$signs.cat)
-            knotInd.cat[n.models,1:nb,]<-as.integer(curr.list[[cold.chain]]$knotInd.cat)
+            sub.size[n.models,1:nb,]<-as.integer(curr.list[[cold.chain]]$sub.size)
+            sub.list[[n.models]]<-curr.list[[cold.chain]]$sub.list
             n.int.cat[n.models,1:nb]<-as.integer(curr.list[[cold.chain]]$n.int.cat)
           }
           if(func){
@@ -655,13 +720,15 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
        des=des,func=func,cat=cat,type=type
   )
 
+  mb<-max(nbasis)
+  
   out.des<-list()
   if(des){
     out.des<-list(
-      knotInd.des=knotInd.des[1:n.models,,,drop=F],
-      signs.des=signs.des[1:n.models,,,drop=F],
-      vars.des=vars.des[1:n.models,,,drop=F],
-      n.int.des=n.int.des[1:n.models,,drop=F],
+      knotInd.des=knotInd.des[1:n.models,1:mb,,drop=F],
+      signs.des=signs.des[1:n.models,1:mb,,drop=F],
+      vars.des=vars.des[1:n.models,1:mb,,drop=F],
+      n.int.des=n.int.des[1:n.models,1:mb,drop=F],
       maxInt.des=maxInt.des,
       des.basis=curr.list[[cold.chain]]$des.basis,
       pdes=pdes,
@@ -671,26 +738,27 @@ bass<-function(xx,y,maxInt=NULL,maxInt.func=NULL,xx.func=NULL,degree=1,maxBasis=
   }
 
   out.cat<-list()
-  # if(cat){
-  #   out.cat<-list(
-  #     #knotInd.cat=knotInd.cat[1:n.models,,,drop=F],
-  #     #signs.cat=signs.cat[1:n.models,,,drop=F],
-  #     vars.cat=vars.cat[1:n.models,,,drop=F],
-  #     n.int.cat=n.int.cat[1:n.models,,drop=F],
-  #     maxInt.cat=maxInt.cat,
-  #     cat.basis=curr.list[[cold.chain]]$cat.basis,
-  #     pcat=pcat,
-  #     xx.cat=xx.cat
-  #   )
-  # }
+  if(cat){
+    out.cat<-list(
+      vars.cat=vars.cat[1:n.models,1:mb,,drop=F],
+      sub.size=sub.size[1:n.models,1:mb,,drop=F],
+      sub.list=sub.list,
+      n.int.cat=n.int.cat[1:n.models,1:mb,drop=F],
+      maxInt.cat=maxInt.cat,
+      cat.basis=curr.list[[cold.chain]]$cat.basis,
+      pcat=pcat,
+      xx.cat=xx.cat,
+      nlevels=data$nlevels
+    )
+  }
 
   out.func<-list()
   if(func){
     out.func<-list(
-      knotInd.func=knotInd.func[1:n.models,,,drop=F],
-      signs.func=signs.func[1:n.models,,,drop=F],
-      vars.func=vars.func[1:n.models,,,drop=F],
-      n.int.func=n.int.func[1:n.models,,drop=F],
+      knotInd.func=knotInd.func[1:n.models,1:mb,,drop=F],
+      signs.func=signs.func[1:n.models,1:mb,,drop=F],
+      vars.func=vars.func[1:n.models,1:mb,,drop=F],
+      n.int.func=n.int.func[1:n.models,1:mb,drop=F],
       maxInt.func=maxInt.func,
       func.basis=curr.list[[cold.chain]]$func.basis,
       pfunc=pfunc,

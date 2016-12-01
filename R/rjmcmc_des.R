@@ -2,7 +2,7 @@
 ## perform RJMCMC step (birth, death, or change)
 ########################################################################
 birth_des<-function(curr,prior,data){
-  cand.des<-genCandBasis(minInt=prior$minInt,maxInt=prior$maxInt.des,I.vec=curr$I.vec.des,z.vec=curr$z.vec.des,p=data$pdes,xxt=data$xxt.des,q=prior$q,xx.unique.ind=data$unique.ind.des,vars.len=data$vars.len.des)
+  cand.des<-genCandBasis(minInt=prior$minInt,maxInt=prior$maxInt.des,I.vec=curr$I.vec.des,z.vec=curr$z.vec.des,p=data$pdes,xxt=data$xxt.des,q=prior$q,xx.unique.ind=data$unique.ind.des,vars.len=data$vars.len.des,prior)
 
   if(sum(cand.des$basis!=0)<prior$npart.des){
     return(curr)
@@ -25,6 +25,7 @@ birth_des<-function(curr,prior,data){
 
   ## calculate log acceptance probability
   alpha<- data$temp.ladder[curr$temp.ind]*(.5/curr$s2*(qf.cand.list$qf-curr$qf) + log(curr$lam) - log(curr$nc) + log(data$death.prob.next/data$birth.prob) - cand.des$lbmcmp)
+  #cat(- cand.des$lbmcmp,' ')
 
   ## assign new values
   if(log(runif(1)) < alpha){
@@ -52,7 +53,7 @@ death_des<-function(curr,prior,data){
   z.star.des[curr$vars.des[basis,1:curr$n.int.des[basis]]]<-z.star.des[curr$vars.des[basis,1:curr$n.int.des[basis]]]-1
   z.vec.des<-z.star.des/sum(z.star.des)
 
-  lpbmcmp<-logProbChangeMod(curr$n.int.des[basis],curr$vars.des[basis,1:curr$n.int.des[basis]],I.vec.des,z.vec.des,data$pdes,data$vars.len.des,prior$maxInt.des)
+  lpbmcmp<-logProbChangeMod(curr$n.int.des[basis],curr$vars.des[basis,1:curr$n.int.des[basis]],I.vec.des,z.vec.des,data$pdes,data$vars.len.des,prior$maxInt.des,prior$miC)
 
   # calculate log acceptance probability
   alpha<- data$temp.ladder[curr$temp.ind]*(.5/curr$s2*(qf.cand.list$qf-curr$qf) - log(curr$lam) + log(data$birth.prob.last/data$death.prob) + log(curr$nbasis) + lpbmcmp)

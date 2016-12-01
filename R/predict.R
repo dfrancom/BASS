@@ -21,8 +21,21 @@ makeBasisMatrix<-function(i,nbasis,vars,signs,knots.ind,q,xxt,n.int,xx.train){
   return(tbasis.mat)
 } # I think prediction on a test set should be kept separate from the bass function, simplifies tempering (only would want to predict on the cold chain).
 
-makeBasisMatrixCat<-function(i,nbasis,vars,signs,knots.ind,q,xxt,n.int,Xt){
-  return(1)
+
+makeBasisMatrixCat<-function(i,nbasis,vars,xx,n.int,sub){
+  n<-nrow(xx)
+  tbasis.mat<-matrix(nrow=nbasis+1,ncol=n)
+  tbasis.mat[1,]<-1
+  for(m in 1:nbasis){
+    if(n.int[i,m]==0){
+      tbasis.mat[m+1,]<-1 # could do this at beginning
+    } else{
+      use<-1:n.int[i,m]
+      tbasis.mat[m+1,]<-makeBasisCat(vars[i,m,use],sub[[i]][[m]],xx)
+    }
+  }
+  #browser()
+  return(tbasis.mat)
 }
 
 #' @title BASS Prediction
@@ -61,9 +74,16 @@ predict.bass<-function(object,newdata,newdata.func=NULL,mcmc.use=NULL,verbose=FA
   }
 
   newdata<-as.data.frame(newdata)
+  cx<-sapply(newdata,class)
+  cx.factor<- cx == 'factor'
 
-  for(i in 1:ncol(newdata)){
-   newdata[,i]<-scale.range(newdata[,i],object$range.des[,i])
+  newdata.des<-newdata[,!cx.factor,drop=F]
+  newdata.cat<-newdata[,cx.factor,drop=F]
+  
+  if(ncol(newdata.des)>0){
+    for(i in 1:ncol(newdata.des)){
+     newdata.des[,i]<-scale.range(newdata.des[,i],object$range.des[,i])
+    }
   }
   out<-array(dim=c(length(mcmc.use),nrow(newdata),nrow(newdata.func)))
   k<-0
@@ -76,28 +96,65 @@ predict.bass<-function(object,newdata,newdata.func=NULL,mcmc.use=NULL,verbose=FA
     mcmc.use.j<-mcmc.use[models==j]
     ind<-k+(1:length(mcmc.use.j)) # index for storage
     k<-k+length(ind) # used for start of index
-    out[ind,,]<-eval(parse(text=paste('mult',object$type,sep='')))(model=j,mcmc.use.mod=mcmc.use.j,object=object,newdata=newdata,newdata.func=newdata.func)
+    out[ind,,]<-eval(parse(text=paste('mult',object$type,sep='')))(model=j,mcmc.use.mod=mcmc.use.j,object=object,newdata.des=newdata.des,newdata.cat=newdata.cat,newdata.func=newdata.func)
+    #browser()
     if(verbose & mod.ind%%100==0)
       cat('Predict',timestamp(prefix='#--',suffix='--#',quiet=T),'Model:',mod.ind,'\n')
   }
   return(drop(out))
 }
 
-mult_des<-function(model,mcmc.use.mod,object,newdata,newdata.func){
+mult_des<-function(model,mcmc.use.mod,object,newdata.des,newdata.cat,newdata.func){
   M<-object$nbasis[mcmc.use.mod[1]]
-  tmat<-makeBasisMatrix(model,M,object$vars,object$signs,object$knotInd,object$degree,t(newdata),object$n.int,object$xx.des) ## need to get rid of these transposes
-  out<-object$beta[mcmc.use.mod,1:(M+1),drop=F]%*%tmat
+  tmat.des<-makeBasisMatrix(model,M,object$vars,object$signs,object$knotInd,object$degree,t(newdata.des),object$n.int,object$xx.des) ## need to get rid of these transposes
+  out<-object$beta[mcmc.use.mod,1:(M+1),drop=F]%*%tmat.des
+  return(out)
+}
+mult_cat<-function(model,mcmc.use.mod,object,newdata.des,newdata.cat,newdata.func){
+  M<-object$nbasis[mcmc.use.mod[1]]
+  tmat.cat<-makeBasisMatrixCat(model,M,object$vars.cat,newdata.cat,object$n.int.cat,object$sub.list)
+  out<-object$beta[mcmc.use.mod,1:(M+1),drop=F]%*%tmat.cat
   return(out)
 }
 
-mult_des_func<-function(model,mcmc.use.mod,object,newdata,newdata.func){
+mult_des_cat<-function(model,mcmc.use.mod,object,newdata.des,newdata.cat,newdata.func){
   M<-object$nbasis[mcmc.use.mod[1]]
-  tmat.des<-makeBasisMatrix(model,M,object$vars.des,object$signs.des,object$knotInd.des,object$degree,t(newdata),object$n.int.des,object$xx.des)
+  tmat.des<-makeBasisMatrix(model,M,object$vars.des,object$signs.des,object$knotInd.des,object$degree,t(newdata.des),object$n.int.des,object$xx.des) ## need to get rid of these transposes
+  tmat.cat<-makeBasisMatrixCat(model,M,object$vars.cat,newdata.cat,object$n.int.cat,object$sub.list)
+  out<-object$beta[mcmc.use.mod,1:(M+1),drop=F]%*%(tmat.des*tmat.cat)
+  return(out)
+}
+
+mult_des_func<-function(model,mcmc.use.mod,object,newdata.des,newdata.cat,newdata.func){
+  M<-object$nbasis[mcmc.use.mod[1]]
+  tmat.des<-makeBasisMatrix(model,M,object$vars.des,object$signs.des,object$knotInd.des,object$degree,t(newdata.des),object$n.int.des,object$xx.des)
   tmat.func<-makeBasisMatrix(model,M,object$vars.func,object$signs.func,object$knotInd.func,object$degree,t(newdata.func),object$n.int.func,object$xx.func)
-  out<-array(dim=c(length(mcmc.use.mod),nrow(newdata),nrow(newdata.func)))
+  out<-array(dim=c(length(mcmc.use.mod),nrow(newdata.des),nrow(newdata.func)))
   for(i in 1:length(mcmc.use.mod)){
     out[i,,]<-crossprod(diag(c(object$beta[mcmc.use.mod[i],1:(M+1)]),M+1)%*%tmat.des,tmat.func)
   }
+  return(out)
+}
 
+mult_cat_func<-function(model,mcmc.use.mod,object,newdata.des,newdata.cat,newdata.func){
+  M<-object$nbasis[mcmc.use.mod[1]]
+  tmat.cat<-makeBasisMatrixCat(model,M,object$vars.cat,newdata.cat,object$n.int.cat,object$sub.list)
+  tmat.func<-makeBasisMatrix(model,M,object$vars.func,object$signs.func,object$knotInd.func,object$degree,t(newdata.func),object$n.int.func,object$xx.func)
+  out<-array(dim=c(length(mcmc.use.mod),nrow(newdata.cat),nrow(newdata.func)))
+  for(i in 1:length(mcmc.use.mod)){
+    out[i,,]<-crossprod(diag(c(object$beta[mcmc.use.mod[i],1:(M+1)]),M+1)%*%tmat.cat,tmat.func)
+  }
+  return(out)
+}
+
+mult_des_cat_func<-function(model,mcmc.use.mod,object,newdata.des,newdata.cat,newdata.func){
+  M<-object$nbasis[mcmc.use.mod[1]]
+  tmat.des<-makeBasisMatrix(model,M,object$vars.des,object$signs.des,object$knotInd.des,object$degree,t(newdata.des),object$n.int.des,object$xx.des)
+  tmat.cat<-makeBasisMatrixCat(model,M,object$vars.cat,newdata.cat,object$n.int.cat,object$sub.list)
+  tmat.func<-makeBasisMatrix(model,M,object$vars.func,object$signs.func,object$knotInd.func,object$degree,t(newdata.func),object$n.int.func,object$xx.func)
+  out<-array(dim=c(length(mcmc.use.mod),nrow(newdata.des),nrow(newdata.func)))
+  for(i in 1:length(mcmc.use.mod)){
+    out[i,,]<-crossprod(diag(c(object$beta[mcmc.use.mod[i],1:(M+1)]),M+1)%*%(tmat.des*tmat.cat),tmat.func)
+  }
   return(out)
 }
