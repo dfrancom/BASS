@@ -57,15 +57,15 @@ plot.bassSob<-function(sens,...){
   op<-par(no.readonly=T)
   par(mfrow=c(1,2),xpd=T)
   if(sens$func){
+    ord<-order(sens$xx)
     sens.mean<-apply(sens$S,2:3,mean)
-    matplot(t(apply(sens.mean,2,cumsum)),type='l',xlab='x',ylab='proportion variance',ylim=c(0,1),main='Sensitivity',...)
+    matplot(sens$xx[ord],t(apply(sens.mean,2,cumsum))[ord,],type='l',xlab='x',ylab='proportion variance',ylim=c(0,1),main='Sensitivity',...)
     lab.x<-apply(sens.mean,1,which.max)
     cs<-rbind(0,apply(sens.mean,2,cumsum))
     cs.diff<-apply(sens.mean,2,function(x) diff(cumsum(c(0,x))))
-    text(x=lab.x,y=cs[cbind(1:length(lab.x),lab.x)] + (cs.diff/2)[cbind(1:length(lab.x),lab.x)],sens$names.ind,...)
-    
+    text(x=sens$xx[lab.x],y=cs[cbind(1:length(lab.x),lab.x)] + (cs.diff/2)[cbind(1:length(lab.x),lab.x)],sens$names.ind,...)
     sens.mean.var<-apply(sens$S.var,2:3,mean)
-    matplot(t(apply(sens.mean.var,2,cumsum)),type='l',xlab='x',ylab='variance',main='Varaince Decomposition',...)
+    matplot(sens$xx[ord],t(apply(sens.mean.var,2,cumsum))[ord,],type='l',xlab='x',ylab='variance',main='Varaince Decomposition',...)
   } else{
     boxplot(sens$S,las=2,ylab='proportion varaince',main='Sensitivity',range=0,...)
     boxplot(sens$T,main='Total Sensitivity',range=0,...)

@@ -236,31 +236,32 @@ getYhat_des_cat_func<-function(curr,nb){
 ########################################################################
 #' @title Bayesian Adaptive Spline Surfaces (BASS)
 #'
-#' @description Fits a BASS model using RJMCMC.  Optionally uses parallel tempering to improve mixing.  Can be used with scalar or functional response.
+#' @description Fits a BASS model using RJMCMC.  Optionally uses parallel tempering to improve mixing.  Can be used with scalar or functional response.  Also can use categorical inputs.
 #' @param xx a data frame or matrix of predictors.  Categorical predictors should be included as factors.
 #' @param y  a response vector (scalar response) or matrix (functional response).
 #' @param maxInt integer for maximum degree of interaction in spline basis functions.  Defaults to the number of predictors, which could result in overfitting.
 #' @param maxInt.func (functional response only) integer for maximum degree of interaction in spline basis functions describing the functional response.
-#' @param xx.func a data frame or matrix of functional variables.
+#' @param maxInt.func (categorical input only) integer for maximum degree of interaction of categorical inputs.
+#' @param xx.func a vector, matrix or data frame of functional variables.
 #' @param degree degree of splines.  Stability should be examined for anything other than 1.
 #' @param maxBasis maximum number of basis functions.
-#' @param npart minimum number of non-zero points in a basis function.  If the response is functional, this refers only to the portion of the basis function coming from the non-functional predictors.  If the only predictors are functional, this is ignored. Defaults to 1, which could result in overfitting.
+#' @param npart minimum number of non-zero points in a basis function.  If the response is functional, this refers only to the portion of the basis function coming from the non-functional predictors. Defaults to 20 or 0.1 times the number of observations, whichever is smaller.
 #' @param npart.func same as npart, but for functional portion of basis function.
 #' @param nmcmc number of RJMCMC iterations.
 #' @param nburn number of the \code{nmcmc} iterations to disregard.
-#' @param thin keep every \code{thin} iterations.
+#' @param thin keep every \code{thin} samples
 #' @param g1 shape for IG prior on \eqn{\sigma^2}.
 #' @param g2 scale for IG prior on \eqn{\sigma^2}.
 #' @param h1 shape for gamma prior on \eqn{\lambda}.
-#' @param h2 rate for gamma prior on \eqn{\lambda}.
+#' @param h2 rate for gamma prior on \eqn{\lambda}.  This is the primary way to control overfitting.  A large value of \code{h2} favors fewer basis functions.
 #' @param a.beta.prec shape for gamma prior on \eqn{\tau}.
-#' @param b.beta.prec rate for gamma prior on \eqn{\tau}.
-#' @param w1 nominal weight for degree of interaction.
-#' @param w2 nominal weight for variables.
+#' @param b.beta.prec rate for gamma prior on \eqn{\tau}. Defaults to one over the number of observations, which is the unit information prior.
+#' @param w1 nominal weight for degree of interaction, used in generating candidate basis functions.
+#' @param w2 nominal weight for variables, used in generating candidate basis functions.
 #' @param temp.ladder temperature ladder used for parallel tempering.  The first value should be 1 and the values should decrease.
 #' @param start.temper when to start tempering (after how many MCMC iterations).
-#' @param ncores number of cores to use in parallel tempering.  This currently does not work.
-#' @param curr.list list of starting models (one element for each temperature), likely output from a previous run.
+#' @param ncores currently disregarded.
+#' @param curr.list list of starting models (one element for each temperature), could be output from a previous run under the same model setup.
 #' @param save.yhat logical; should predictions of training data be saved?
 #' @param verbose logical; should progress be displayed?
 #' @details Explores BASS model space by RJMCMC.  The BASS model has \deqn{y = f(x) + \epsilon,  \epsilon ~ N(0,\sigma^2)} \deqn{f(x) = a_0 + \sum_{m=1}^M a_m B_m(x)} and \eqn{B_m(x)} is a BASS basis function (tensor product of spline basis functions). We use priors \deqn{a ~ N(0,\sigma^2/\tau (B'B)^{-1})} \deqn{M ~ Poisson(\lambda)} as well as the priors mentioned in the arguments above.
@@ -588,6 +589,7 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
 
     ## update model for each temperature
     #curr.list<-parLapply(cluster,curr.list,updateMCMC)
+    ncores<-1
     curr.list<-parallel::mclapply(curr.list,updateMCMC,prior=prior,data=data,funcs=funcs,mc.preschedule=T,mc.cores=ncores)
     # TODO: DO SOMETHING LIKE THIS BUT KEEP EVERYTHING SEPARATE ON THE CLUSTER, all we need is lpost, cmod
     
@@ -717,7 +719,7 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
        temp.val=temp.val,
        n.models=n.models,
        model.lookup=model.lookup,
-       des=des,func=func,cat=cat,type=type
+       des=des,func=func,cat=cat,type=type,cx=cx
   )
 
   mb<-max(nbasis)

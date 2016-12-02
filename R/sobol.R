@@ -138,8 +138,12 @@ VuInt_des_func<-function(u,tl){ # sobol interaction variances
 #' # See examples in bass documentation.
 #'
 sobol<-function(mod,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=TRUE){ # note: requires inputs to be scaled to [0,1]
+  if(class(mod)!='bass')
+    stop('First input needs to be a bass object')
   if(mod$p==1 & !mod$func)
     stop('Sobol only used for multiple input models')
+  if(mod$p==1 & sum(func.var)>0)
+    stop('Cannot decompose the variance in terms of only one variable')
   mcmc.use.poss<-1:((mod$nmcmc-mod$nburn)/mod$thin)
   if(any(!(mcmc.use%in%mcmc.use.poss))){
     mcmc.use<-mcmc.use.poss
@@ -159,11 +163,11 @@ sobol<-function(mod,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=TRUE){ 
     }
   }
 
+  if(!is.null(xx.func.var) & !func)
+    warning('disregarding xx.func.var because mod parameter is not functional')
 
 
   if(func){
-    #if(is.null(func.var))
-    #  func.var<-1
     if(!(func.var%in%(1:ncol(mod$xx.func))))
       stop('func.var in wrong range of values')
     if(is.null(xx.func.var)){
@@ -181,12 +185,6 @@ sobol<-function(mod,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=TRUE){ 
     return(sobol_des(mod=mod,mcmc.use=mcmc.use,verbose=verbose)) # applies to both des & func as long as functional sobol indices are not desired
   }
 }
-
-
-
-
-
-
 
 
 
@@ -642,7 +640,7 @@ sobol_des_func<-function(mod,mcmc.use,verbose,func.var,xx.func.var){
   #sob<-as.data.frame(sob)
   #names(sob)<-unlist(names.ind) # give labels
 
-  ret<-list(S=sob2,S.var=sob,names.ind=unlist(names.ind),xx=tl$xx,func=T)#,var.tot=var.tot))
+  ret<-list(S=sob2,S.var=sob,names.ind=unlist(names.ind),xx=unscale.range(tl$xx,mod$range.func),func=T)#,var.tot=var.tot))
   class(ret)<-'bassSob'
   return(ret)
 }
