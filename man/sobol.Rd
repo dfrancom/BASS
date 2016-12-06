@@ -4,17 +4,17 @@
 \alias{sobol}
 \title{BASS Sensitivity Analysis}
 \usage{
-sobol(mod, mcmc.use = NULL, func.var = NULL, xx.func.var = NULL,
+sobol(bassMod, mcmc.use = NULL, func.var = NULL, xx.func.var = NULL,
   verbose = TRUE)
 }
 \arguments{
-\item{mod}{a fitted model output from the \code{bass} function.}
+\item{bassMod}{a fitted model output from the \code{bass} function.}
 
 \item{mcmc.use}{an integer vector indexing which MCMC iterations to use for sensitivity analysis.}
 
-\item{func.var}{an integer indicating which functional variable to make sensitivity indices a function of.  Disregard if \code{mod} is non-functional or if scalar sensitivity indices are desired.}
+\item{func.var}{an integer indicating which functional variable to make sensitivity indices a function of.  Disregard if \code{bassMod} is non-functional or if scalar sensitivity indices are desired.}
 
-\item{xx.func.var}{grid for functional variable specified by \code{func.var}.  Disregard if \code{func.var} is not specified.  If \code{func.var} is specified and \code{xx.func.var} not specified, the grid used to fit \code{mod} will be used.}
+\item{xx.func.var}{grid for functional variable specified by \code{func.var}.  Disregard if \code{func.var} is not specified.  If \code{func.var} is specified and \code{xx.func.var} not specified, the grid used to fit \code{bass} will be used.}
 
 \item{verbose}{logical; should progress be displayed?}
 }

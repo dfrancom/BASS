@@ -1,43 +1,3 @@
-########################################################################
-## functions for prediction
-########################################################################
-
-## make basis functions for model i
-makeBasisMatrix<-function(i,nbasis,vars,signs,knots.ind,q,xxt,n.int,xx.train){
-  n<-ncol(xxt)
-  tbasis.mat<-matrix(nrow=nbasis+1,ncol=n)
-  tbasis.mat[1,]<-1
-  if(nbasis>0){
-    for(m in 1:nbasis){
-      if(n.int[i,m]==0){
-        tbasis.mat[m+1,]<-1 # could do this at beginning
-      } else{
-        use<-1:n.int[i,m]
-        knots<-xx.train[cbind(knots.ind[i,m,use],vars[i,m,use])] # get knots from knots.ind
-        tbasis.mat[m+1,]<-makeBasis(signs[i,m,use],vars[i,m,use],knots,xxt,q)
-      }
-    }
-  }
-  return(tbasis.mat)
-} # I think prediction on a test set should be kept separate from the bass function, simplifies tempering (only would want to predict on the cold chain).
-
-
-makeBasisMatrixCat<-function(i,nbasis,vars,xx,n.int,sub){
-  n<-nrow(xx)
-  tbasis.mat<-matrix(nrow=nbasis+1,ncol=n)
-  tbasis.mat[1,]<-1
-  for(m in 1:nbasis){
-    if(n.int[i,m]==0){
-      tbasis.mat[m+1,]<-1 # could do this at beginning
-    } else{
-      use<-1:n.int[i,m]
-      tbasis.mat[m+1,]<-makeBasisCat(vars[i,m,use],sub[[i]][[m]],xx)
-    }
-  }
-  #browser()
-  return(tbasis.mat)
-}
-
 #' @title BASS Prediction
 #'
 #' @description Predict function for BASS.  Outputs the posterior predictive samples based on the specified MCMC iterations.
@@ -46,6 +6,7 @@ makeBasisMatrixCat<-function(i,nbasis,vars,xx,n.int,sub){
 #' @param newdata.func a matrix of new values of the functional variable.  If none, the same values will be used as in the training data.
 #' @param mcmc.use a vector indexing which MCMC iterations to use for prediction.
 #' @param verbose logical; should progress be displayed?
+#' @param ... further arguments passed to or from other methods.
 #' @details Efficiently predicts when two MCMC iterations have the same basis functions (but different weights).
 #' @return If model output is a scalar, this returns a matrix with the same number of rows as \code{newdata} and columns corresponding to the the MCMC iterations \code{mcmc.use}.  These are samples from the posterior predictive distribution.  If model output is functional, this returns an array with first dimension corresponding to MCMC iteration, second dimension corresponding to the rows of \code{newdata}, and third dimension corresponding to the rows of \code{newdata.func}.
 #' @keywords BMARS
@@ -54,7 +15,7 @@ makeBasisMatrixCat<-function(i,nbasis,vars,xx,n.int,sub){
 #' @examples
 #' # See examples in bass documentation.
 #'
-predict.bass<-function(object,newdata,newdata.func=NULL,mcmc.use=NULL,verbose=FALSE){
+predict.bass<-function(object,newdata,newdata.func=NULL,mcmc.use=NULL,verbose=FALSE,...){
   if(is.null(mcmc.use)){ # if null, use all
     mcmc.use<-1:((object$nmcmc-object$nburn)/object$thin)
   }
@@ -72,19 +33,19 @@ predict.bass<-function(object,newdata,newdata.func=NULL,mcmc.use=NULL,verbose=FA
   } else{
     newdata.func<-t(1) # placeholder
   }
-
+  
   newdata<-as.data.frame(newdata)
   cx<-sapply(newdata,class)
   cx.factor<- cx == 'factor'
   if(!all(cx==object$cx))
     stop('number/order of columns of newdata does not match number/order of inputs used to train object')
-
+  
   newdata.des<-newdata[,!cx.factor,drop=F]
   newdata.cat<-newdata[,cx.factor,drop=F]
   
   if(ncol(newdata.des)>0){
     for(i in 1:ncol(newdata.des)){
-     newdata.des[,i]<-scale.range(newdata.des[,i],object$range.des[,i])
+      newdata.des[,i]<-scale.range(newdata.des[,i],object$range.des[,i])
     }
   }
   out<-array(dim=c(length(mcmc.use),nrow(newdata),nrow(newdata.func)))
@@ -105,6 +66,48 @@ predict.bass<-function(object,newdata,newdata.func=NULL,mcmc.use=NULL,verbose=FA
   }
   return(drop(out))
 }
+
+# I think prediction on a test set should be kept separate from the bass function, simplifies tempering (only would want to predict on the cold chain).
+
+########################################################################
+## get basis functions
+########################################################################
+
+## make basis functions for model i
+makeBasisMatrix<-function(i,nbasis,vars,signs,knots.ind,q,xxt,n.int,xx.train){
+  n<-ncol(xxt)
+  tbasis.mat<-matrix(nrow=nbasis+1,ncol=n)
+  tbasis.mat[1,]<-1
+  if(nbasis>0){
+    for(m in 1:nbasis){
+      if(n.int[i,m]==0){
+        tbasis.mat[m+1,]<-1 # could do this at beginning
+      } else{
+        use<-1:n.int[i,m]
+        knots<-xx.train[cbind(knots.ind[i,m,use],vars[i,m,use])] # get knots from knots.ind
+        tbasis.mat[m+1,]<-makeBasis(signs[i,m,use],vars[i,m,use],knots,xxt,q)
+      }
+    }
+  }
+  return(tbasis.mat)
+} 
+
+makeBasisMatrixCat<-function(i,nbasis,vars,xx,n.int,sub){
+  n<-nrow(xx)
+  tbasis.mat<-matrix(nrow=nbasis+1,ncol=n)
+  tbasis.mat[1,]<-1
+  for(m in 1:nbasis){
+    if(n.int[i,m]==0){
+      tbasis.mat[m+1,]<-1 # could do this at beginning
+    } else{
+      use<-1:n.int[i,m]
+      tbasis.mat[m+1,]<-makeBasisCat(vars[i,m,use],sub[[i]][[m]],xx)
+    }
+  }
+  #browser()
+  return(tbasis.mat)
+}
+
 
 mult_des<-function(model,mcmc.use.mod,object,newdata.des,newdata.cat,newdata.func){
   M<-object$nbasis[mcmc.use.mod[1]]

@@ -5,7 +5,7 @@
 \title{BASS Prediction}
 \usage{
 \method{predict}{bass}(object, newdata, newdata.func = NULL,
-  mcmc.use = NULL, verbose = FALSE)
+  mcmc.use = NULL, verbose = FALSE, ...)
 }
 \arguments{
 \item{object}{a fitted model, output from the \code{bass} function.}
@@ -17,6 +17,8 @@
 \item{mcmc.use}{a vector indexing which MCMC iterations to use for prediction.}
 
 \item{verbose}{logical; should progress be displayed?}
+
+\item{...}{further arguments passed to or from other methods.}
 }
 \value{
 If model output is a scalar, this returns a matrix with the same number of rows as \code{newdata} and columns corresponding to the the MCMC iterations \code{mcmc.use}.  These are samples from the posterior predictive distribution.  If model output is functional, this returns an array with first dimension corresponding to MCMC iteration, second dimension corresponding to the rows of \code{newdata}, and third dimension corresponding to the rows of \code{newdata.func}.

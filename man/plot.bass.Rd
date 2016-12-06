@@ -4,10 +4,10 @@
 \alias{plot.bass}
 \title{BASS Plot Diagnostics}
 \usage{
-\method{plot}{bass}(mod, quants = c(0.025, 0.975), ...)
+\method{plot}{bass}(x, quants = c(0.025, 0.975), ...)
 }
 \arguments{
-\item{mod}{a \code{bass} object.}
+\item{x}{a \code{bass} object.}
 
 \item{quants}{quantiles for intervals, if desired.  NULL if not desired.}
 
