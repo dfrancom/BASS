@@ -34,6 +34,18 @@ predict.bass<-function(object,newdata,newdata.func=NULL,mcmc.use=NULL,verbose=FA
     newdata.func<-t(1) # placeholder
   }
   
+  dx<-dim(newdata)
+  if(is.null(dx)){
+    newdata<-data.frame(newdata)
+    dx<-dim(newdata)
+  }
+  pd<-sum(object$pdes)+sum(object$pcat)
+  if(dx[2]!=pd){
+    newdata<-t(newdata)
+    dx<-dim(newdata)
+    if(dx[2]!=pd)
+      stop('number of variables in newdata does not match number used in object')
+  }
   newdata<-as.data.frame(newdata)
   cx<-sapply(newdata,class)
   cx.factor<- cx == 'factor'

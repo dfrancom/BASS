@@ -546,7 +546,7 @@ const<-function(signs,knots,degree){ # largest value of basis function, assuming
 } # since a product, can find for functional & categorical pieces separately, take product
 makeBasis<-function(signs,vars,knots,datat,degree){ #faster than apply
   cc<-const(signs,knots,degree)
-  temp1<-pos(signs*(datat[vars,]-knots))^degree
+  temp1<-pos(signs*(datat[vars,,drop=F]-knots))^degree
   if(length(vars)==1){
     return(temp1/cc)
   } else{
