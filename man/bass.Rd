@@ -8,7 +8,7 @@ bass(xx, y, maxInt = 3, maxInt.func = 3, maxInt.cat = 3, xx.func = NULL,
   degree = 1, maxBasis = 1000, npart = NULL, npart.func = NULL,
   nmcmc = 10000, nburn = 9000, thin = 1, g1 = 0, g2 = 0, h1 = 10,
   h2 = 10, a.beta.prec = 1, b.beta.prec = NULL, w1 = 5, w2 = 5,
-  temp.ladder = NULL, start.temper = NULL, ncores = 1, curr.list = NULL,
+  temp.ladder = NULL, start.temper = NULL, curr.list = NULL,
   save.yhat = TRUE, verbose = TRUE)
 }
 \arguments{
@@ -58,8 +58,6 @@ bass(xx, y, maxInt = 3, maxInt.func = 3, maxInt.cat = 3, xx.func = NULL,
 
 \item{start.temper}{when to start tempering (after how many MCMC iterations).}
 
-\item{ncores}{currently disregarded.}
-
 \item{curr.list}{list of starting models (one element for each temperature), could be output from a previous run under the same model setup.}
 
 \item{save.yhat}{logical; should predictions of training data be saved?}
@@ -76,326 +74,70 @@ Fits a BASS model using RJMCMC.  Optionally uses parallel tempering to improve m
 Explores BASS model space by RJMCMC.  The BASS model has \deqn{y = f(x) + \epsilon,  \epsilon ~ N(0,\sigma^2)} \deqn{f(x) = a_0 + \sum_{m=1}^M a_m B_m(x)} and \eqn{B_m(x)} is a BASS basis function (tensor product of spline basis functions). We use priors \deqn{a ~ N(0,\sigma^2/\tau (B'B)^{-1})} \deqn{M ~ Poisson(\lambda)} as well as the priors mentioned in the arguments above.
 }
 \examples{
-#####################################################################################
-## continuous predictors
-#####################################################################################
-rm(list=ls())
+####################################################################################################
+### univariate example
+####################################################################################################
+## simulate data (Friedman function)
 f<-function(x){
   10*sin(pi*x[,1]*x[,2])+20*(x[,3]-.5)^2+10*x[,4]+5*x[,5]
 }
-sigma<-1
-nvars<-10
-n<-500
-ntest<-1000
-x<-matrix(runif(n*nvars),n,nvars)
-xtest<-matrix(runif(ntest*nvars),ntest,nvars)
+sigma<-1 # noise sd
+n<-500 # number of observations
+x<-matrix(runif(n*10),n,10) #10 variables, only first 5 matter
 y<-rnorm(n,f(x),sigma)
 
-## fit BASS
+## fit BASS, no tempering
 mod<-bass(x,y)
+plot(mod)
+## fit BASS, tempering
+mod<-bass(x,y,temp.ladder=c(1,.8,.65,.5,.4,.3,.23,.15,.1,.05),start.temper=1000)
 plot(mod)
 
 ## prediction
-pred<-predict(mod,xtest)
-true.y<-f(xtest)
-plot(true.y,colMeans(pred)); abline(a=0,b=1,col=2)
+npred<-1000
+xpred<-matrix(runif(npred*10),npred,10)
+pred<-predict(mod,xpred,verbose=TRUE) # posterior predictive samples
+true.y<-f(xpred)
+plot(true.y,colMeans(pred),xlab='true values',ylab='posterior predictive means')
+abline(a=0,b=1,col=2)
 
-## sobol
+## sensitivity
 sens<-sobol(mod)
 plot(sens,cex.axis=.5)
-all(abs(rowSums(sens$S)-1)<1e14)
 
-#####################################################################################
-## categorical predictors
-#####################################################################################
-rm(list=ls())
-f<-function(x){
-  return(10+5*as.numeric(x[,1]\%in\%c(2,4,6,8,10))*as.numeric(x[,2]==1)+as.numeric(x[,1]\%in\%c(1:4)))
-}
-sigma<-.05
-n<-300
-ntest<-1000
-x<-data.frame(as.factor(sample(1:10,size=n,replace=T)),as.factor(sample(1:2,size=n,replace=T)))
-xtest<-data.frame(as.factor(sample(1:10,size=ntest,replace=T)),as.factor(sample(1:2,size=ntest,replace=T)))
-y<-rnorm(n,f(x),sigma)
-
-## fit BASS
-mod<-bass(x,y)
-plot(mod)
-
-## prediction
-pred<-predict(mod,xtest)
-true.y<-f(xtest)
-plot(true.y,colMeans(pred)); abline(a=0,b=1,col=2)
-
-## sobol
-sens<-sobol(mod)
-plot(sens,cex.axis=.5)
-all(abs(rowSums(sens$S)-1)<1e14)
-
-#####################################################################################
-## continuous and categorical predictors
-#####################################################################################
-rm(list=ls())
-f<-function(x){
-  return(x[,2]*x[,3]+5*as.numeric(x[,1]\%in\%c(2,4,6,8,10))*x[,2]*as.numeric(x[,4]==1)*x[,3])
-}
-sigma<-.1
-n<-500
-ntest<-1000
-x<-data.frame(as.factor(sample(1:10,size=n,replace=T)),runif(n),runif(n),as.factor(sample(1:2,size=n,replace=T)))
-xtest<-data.frame(as.factor(sample(1:10,size=ntest,replace=T)),runif(ntest),runif(ntest),as.factor(sample(1:2,size=ntest,replace=T)))
-y<-rnorm(n,f(x),sigma)
-
-## fit BASS
-mod<-bass(x,y)
-plot(mod)
-
-## prediction
-pred<-predict(mod,xtest)
-true.y<-f(xtest)
-plot(true.y,colMeans(pred)); abline(a=0,b=1,col=2)
-
-## sobol
-sens<-sobol(mod)
-plot(sens,cex.axis=.5)
-all(abs(rowSums(sens$S)-1)<1e14)
-
-#####################################################################################
-## continuous predictors, functional output
-#####################################################################################
-rm(list=ls())
-f<-function(x){
-  10*sin(pi*x[,1]*x[,2])+20*(x[,3]-.5)^2+10*x[,4]+5*x[,5]
-}
-sigma<-1
-n<-500
-ntest<-1000
-nfunc<-50
-xfunc<-seq(0,1,length.out=nfunc)
-x<-matrix(runif(n*9),n,9)
-xtest<-matrix(runif(ntest*9),ntest,9)
-y<-matrix(f(cbind(rep(xfunc,each=n),kronecker(rep(1,nfunc),x))),nrow=nfunc,byrow=T)+rnorm(n*nfunc,0,sigma)
-matplot(y,type='l')
+####################################################################################################
+### functional example
+####################################################################################################
+## simulate data (Friedman function with first variable as functional)
+sigma<-1 # noise sd
+n<-500 # number of observations
+nfunc<-50 # size of functional variable grid
+xfunc<-seq(0,1,length.out=nfunc) # functional grid
+x<-matrix(runif(n*9),n,9) # 9 non-functional variables, only first 4 matter
+X<-cbind(rep(xfunc,each=n),kronecker(rep(1,nfunc),x)) # to get y
+y<-matrix(f(X),nrow=n)+rnorm(n*nfunc,0,sigma)
 
 ## fit BASS
 mod<-bass(x,y,xx.func=xfunc)
 plot(mod)
 
 ## prediction
-pred<-predict(mod,xtest)
-true.y<-matrix(f(cbind(rep(xfunc,each=ntest),kronecker(rep(1,nfunc),xtest))),nrow=nfunc,byrow=T)
-matplot(true.y,t(apply(pred,2:3,mean)),type='l'); abline(a=0,b=1,col=2)
+npred<-100
+xpred<-matrix(runif(npred*9),npred,9)
+Xpred<-cbind(rep(xfunc,each=npred),kronecker(rep(1,nfunc),xpred))
+ypred<-matrix(f(Xpred),nrow=npred)
+pred<-predict(mod,xpred) # posterior predictive samples (each is a curve)
+matplot(ypred,apply(pred,2:3,mean),type='l',xlab='observed',ylab='mean prediction')
+abline(a=0,b=1,col=2)
+matplot(ypred,type='l') # actual
+matplot(t(apply(pred,2:3,mean)),type='l') # mean prediction
 
-## sobol
-sens<-sobol(mod,mcmc.use=1:100)
-plot(sens,cex.axis=.5)
-all(abs(rowSums(sens$S)-1)<1e14)
-
-sens.func<-sobol(mod,mcmc.use=1:100,func.var=1)
-plot(sens.func)
-
-
-#####################################################################################
-## categorical predictors, functional output
-#####################################################################################
-rm(list=ls())
-f<-function(x){
-  10+sin(pi*x[,1]+as.numeric(x[,2]\%in\%c(5:10)))*as.numeric(x[,3]==1)
-}
-sigma<-.1
-n<-500
-ntest<-1000
-nfunc<-50
-xfunc<-seq(0,1,length.out=nfunc)
-x<-data.frame(as.factor(sample(1:10,size=n,replace=T)),as.factor(sample(1:2,size=n,replace=T)))
-xtest<-data.frame(as.factor(sample(1:10,size=ntest,replace=T)),as.factor(sample(1:2,size=ntest,replace=T)))
-x.temp<-as.matrix(x)
-mode(x.temp)<-'numeric'
-xtest.temp<-as.matrix(xtest)
-mode(xtest.temp)<-'numeric'
-y<-matrix(f(cbind(rep(xfunc,each=n),kronecker(rep(1,nfunc),x.temp))),nrow=nfunc,byrow=T)+rnorm(n*nfunc,0,sigma)
-matplot(y,type='l')
-
-## fit BASS
-mod<-bass(x,y,xx.func=xfunc)
-plot(mod)
-
-## prediction
-pred<-predict(mod,xtest)
-true.y<-matrix(f(cbind(rep(xfunc,each=ntest),kronecker(rep(1,nfunc),xtest.temp))),nrow=nfunc,byrow=T)
-matplot(true.y,t(apply(pred,2:3,mean)),type='l'); abline(a=0,b=1,col=2)
-
-## sobol
-sens<-sobol(mod,mcmc.use=1:100)
-plot(sens,cex.axis=.5)
-all(abs(rowSums(sens$S)-1)<1e14)
-
-sens.func<-sobol(mod,mcmc.use=1:100,func.var=1)
-plot(sens.func)
-
-#####################################################################################
-## continuous and categorical predictors, functional output
-#####################################################################################
-rm(list=ls())
-f<-function(x){
-  10+sin(pi*x[,1]+as.numeric(x[,3]\%in\%c(5:10)))*x[,2]
-}
-sigma<-.1
-n<-500
-ntest<-1000
-nfunc<-10
-xfunc<-seq(0,1,length.out=nfunc)
-x<-data.frame(runif(n),as.factor(sample(1:10,size=n,replace=T)))
-xtest<-data.frame(runif(ntest),as.factor(sample(1:10,size=ntest,replace=T)))
-x.temp<-as.matrix(x)
-mode(x.temp)<-'numeric'
-xtest.temp<-as.matrix(xtest)
-mode(xtest.temp)<-'numeric'
-y<-matrix(f(cbind(rep(xfunc,each=n),kronecker(rep(1,nfunc),x.temp))),nrow=nfunc,byrow=T)+rnorm(n*nfunc,0,sigma)
-matplot(xfunc,y,type='l')
-
-## fit BASS
-mod<-bass(x,y,xx.func=xfunc)
-plot(mod)
-
-## prediction
-pred<-predict(mod,xtest)
-true.y<-matrix(f(cbind(rep(xfunc,each=ntest),kronecker(rep(1,nfunc),xtest.temp))),nrow=nfunc,byrow=T)
-matplot(true.y,t(apply(pred,2:3,mean)),type='l'); abline(a=0,b=1,col=2)
-
-## sobol
-sens<-sobol(mod,mcmc.use=1:10)
-plot(sens,cex.axis=.5)
-all(abs(rowSums(sens$S)-1)<1e14)
+## sensitivity
+sens<-sobol(mod,mcmc.use=1:10) # for speed, only use a few samples
+plot(sens) # functional variable labelled "a"
 
 sens.func<-sobol(mod,mcmc.use=1:10,func.var=1)
 plot(sens.func)
-
-
-
-#####################################################################################
-## continuous predictors, 2D functional output
-#####################################################################################
-rm(list=ls())
-environ <- function(xx, s=c(0.5, 1, 1.5, 2, 2.5), t=seq(from=0.3, to=60, by=0.3))
-{
-  ##########################################################################
-  #
-  # ENVIRONMENTAL MODEL FUNCTION
-  #
-  # Authors: Sonja Surjanovic, Simon Fraser University
-  #          Derek Bingham, Simon Fraser University
-  # Questions/Comments: Please email Derek Bingham at dbingham@stat.sfu.ca.
-  #
-  # Copyright 2013. Derek Bingham, Simon Fraser University.
-  #
-  # THERE IS NO WARRANTY, EXPRESS OR IMPLIED. WE DO NOT ASSUME ANY LIABILITY
-  # FOR THE USE OF THIS SOFTWARE.  If software is modified to produce
-  # derivative works, such modified software should be clearly marked.
-  # Additionally, this program is free software; you can redistribute it
-  # and/or modify it under the terms of the GNU General Public License as
-  # published by the Free Software Foundation; version 2.0 of the License.
-  # Accordingly, this program is distributed in the hope that it will be
-  # useful, but WITHOUT ANY WARRANTY; without even the implied warranty
-  # of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-  # General Public License for more details.
-  #
-  # For function details and reference information, see:
-  # http://www.sfu.ca/~ssurjano/
-  #
-  ##########################################################################
-  #
-  # OUTPUT AND INPUTS:
-  #
-  # y = row vector of scaled concentrations of the pollutant at the
-  #     space-time vectors (s, t)
-  #     Its structure is:
-  #     y(s_1, t_1), y(s_1, t_2), ..., y(s_1, t_dt), y(s_2, t_1), ...,
-  #     y(s_2,t_dt), ..., y(s_ds, t_1), ..., y(s_ds, t_dt)
-  # xx = c(M, D, L, tau)
-  # s = vector of locations (optional), with default value
-  #     c(0.5, 1, 1.5, 2, 2.5)
-  # t = vector of times (optional), with default value
-  #     c(0.3, 0.6, ..., 50.7, 60)
-  #
-  ##########################################################################
-  
-  M   <- xx[1]
-  D   <- xx[2]
-  L   <- xx[3]
-  tau <- xx[4]
-  
-  ds <- length(s)
-  dt <- length(t)
-  dY <- ds * dt
-  Y <- matrix(0, ds, dt)
-  
-  # Create matrix Y, where each row corresponds to si and each column
-  # corresponds to tj.
-  for (ii in 1:ds) {
-    si <- s[ii]
-    for (jj in 1:dt) {
-      tj <- t[jj]
-      
-      term1a <- M / sqrt(4*pi*D*tj)
-      term1b <- exp(-si^2 / (4*D*tj))
-      term1 <- term1a * term1b
-      
-      term2 <- 0
-      if (tau < tj) {
-        term2a <- M / sqrt(4*pi*D*(tj-tau))
-        term2b <- exp(-(si-L)^2 / (4*D*(tj-tau)))
-        term2 <- term2a * term2b
-      }
-      
-      C <- term1 + term2
-      Y[ii, jj] <- sqrt(4*pi) * C
-    }
-  }
-  
-  # Convert the matrix into a vector (by rows).
-  Yrow <- t(Y)
-  y <- t(as.vector(Yrow))
-  return(y)
-}
-# M ∈ [7, 13]	mass of pollutant spilled at each location
-# D ∈ [0.02, 0.12]	diffusion rate in the channel
-# L ∈ [0.01, 3]	location of the second spill
-# τ ∈ [30.01, 30.295]   	time of the second spill
-n<-100
-x<-cbind(runif(n,7,13),runif(n,.02,.12),runif(n,.01,3),runif(n,20.01,40.295))
-ntest<-1000
-xtest<-cbind(runif(ntest,7,13),runif(ntest,.02,.12),runif(ntest,.01,3),runif(ntest,30.01,30.295))
-s<-seq(.5,2.5,length.out=20)
-t<-seq(3,60,length.out=20)
-xfunc<-expand.grid(t,s)
-out<-apply(x,1,environ,s=s,t=t)
-out.test<-apply(xtest,1,environ,s=s,t=t)
-image(matrix(out[,1],20))
-y<-log(out+.01)
-true.y<-log(out.test+.01)
-
-## fit BASS
-mod<-bass(x,y,xx.func=xfunc)
-plot(mod)
-
-## prediction
-pred<-predict(mod,xtest,mcmc.use = 1:10)
-matplot(true.y,t(apply(pred,2:3,mean)),type='l'); abline(a=0,b=1,col=2)
-
-## sobol
-sens<-sobol(mod,mcmc.use=1)
-plot(sens,cex.axis=.5)
-all(abs(rowSums(sens$S)-1)<1e14)
-
-sens.func1<-sobol(mod,mcmc.use=1,func.var=1)
-plot(sens.func1)
-
-sens.func2<-sobol(mod,mcmc.use=1,func.var=2)
-plot(sens.func2)
-
-
 }
 \seealso{
 \link{predict.bass} for prediction and \link{sobol} for sensitivity analysis.

@@ -24,7 +24,6 @@
 #' @param w2 nominal weight for variables, used in generating candidate basis functions.
 #' @param temp.ladder temperature ladder used for parallel tempering.  The first value should be 1 and the values should decrease.
 #' @param start.temper when to start tempering (after how many MCMC iterations).
-#' @param ncores currently disregarded.
 #' @param curr.list list of starting models (one element for each temperature), could be output from a previous run under the same model setup.
 #' @param save.yhat logical; should predictions of training data be saved?
 #' @param verbose logical; should progress be displayed?
@@ -35,9 +34,9 @@
 #' @export
 #' @import stats
 #' @import utils
-#' @example ../examples/test_all.R
+#' @example ../examples/examples.R
 #'
-bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,h1=10,h2=10,a.beta.prec=1,b.beta.prec=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,ncores=1,curr.list=NULL,save.yhat=TRUE,verbose=TRUE){
+bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,h1=10,h2=10,a.beta.prec=1,b.beta.prec=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,curr.list=NULL,save.yhat=TRUE,verbose=TRUE){
 
   ########################################################################
   ## setup
@@ -79,6 +78,9 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     xx.func<-apply(xx.func,2,scale.range)
   }
 
+  if(dx[1]==dfx[1])
+    warning('Possible dimension problem: make sure rows of y correspond to functional data')
+  
   des<-T
   cx<-sapply(xx,class)
   cx.factor<- cx == 'factor'
