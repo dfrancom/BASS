@@ -180,14 +180,12 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
 
   npart.des<-npart
   if(is.null(npart.des)){
-    npart.des<-min(20,.1*data$n)
+    npart.des<-min(20,.1*data$ndes)
   }
   if(is.null(npart.func) & func){
     npart.func<-min(20,.1*data$nfunc)
   }
-
-    
-
+  
   maxBasis<-min(maxBasis,data$n) # can't have more basis functions than data points
   maxInt.des<-min(maxInt,pdes) # can't have more interactions than variables
   maxInt.cat<-min(maxInt.cat,pcat)
@@ -546,9 +544,9 @@ const<-function(signs,knots,degree){ # largest value of basis function, assuming
 } # since a product, can find for functional & categorical pieces separately, take product
 makeBasis<-function(signs,vars,knots,datat,degree){ #faster than apply
   cc<-const(signs,knots,degree)
-  temp1<-pos(signs*(datat[vars,]-knots))^degree
+  temp1<-pos(signs*(datat[vars,,drop=F]-knots))^degree
   if(length(vars)==1){
-    return(temp1/cc)
+    return(c(temp1)/cc)
   } else{
     temp2<-1
     for(pp in 1:length(vars)){
