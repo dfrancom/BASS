@@ -78,8 +78,10 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     xx.func<-apply(xx.func,2,scale.range)
   }
 
-  if(dx[1]==dfx[1])
-    warning('Possible dimension problem: make sure rows of y correspond to functional data')
+  if(func){
+    if(dx[1]==dxf[1])
+      warning('Possible dimension problem: make sure rows of y correspond to functional data')
+  }
   
   des<-T
   cx<-sapply(xx,class)
@@ -353,6 +355,10 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
       chain.ind1<-which(temp.ind==temp.ind.swap1) # which chain has temperature temp.ladder[temp.ind.swap1]
       chain.ind2<-which(temp.ind==temp.ind.swap2)
       alpha.swap<-(data$temp.ladder[temp.ind.swap1]-data$temp.ladder[temp.ind.swap2])*(curr.list[[chain.ind2]]$lpost-curr.list[[chain.ind1]]$lpost)
+      if(is.nan(alpha.swap) | is.na(alpha.swap)){
+        alpha.swap<- -9999
+        warning('Small values of temp.ladder too small')
+      }
       if(log(runif(1)) < alpha.swap){
         # swap temperatures
         temp.ind[chain.ind1]<-temp.ind.swap2
@@ -711,11 +717,18 @@ updateMCMC<-function(curr,prior,data,funcs=funcs){
   curr$s2.rate<-(data$ssy + (1+curr$beta.prec)*qf2 - 2*crossprod(curr$beta,curr$Xty[1:curr$nc]))/2
   s2.a<-prior$g1+(data$n+curr$nbasis+1)/2
   s2.b<-prior$g2+curr$s2.rate
+  if(s2.b<=0){
+    prior$g2<-prior$g2+1
+    s2.b<-prior$g2+curr$s2.rate
+    warning('Increased g2 for numerical stability')
+  }
   curr$s2<-rigammaTemper(1,s2.a,s2.b,data$temp.ladder[curr$temp.ind])
   if(is.nan(curr$s2) | is.na(curr$s2)) # major variance inflation, get huge betas from curr$R.inv.t, everything becomes unstable
     browser()
-  if(curr$s2==0){ # tempering instability, this temperature too small
+  if(curr$s2==0 | curr$s2>1e10){ # tempering instability, this temperature too small
     curr$s2<-runif(1,0,1e6)
+    prior$g2<-prior$g2+1
+    warning('Small temperature too small...increased g2 for numerical stability')
     #browser()
   }
   
