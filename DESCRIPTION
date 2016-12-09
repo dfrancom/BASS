@@ -1,7 +1,7 @@
 Package: BASS
 Version: 0.1.0
-Date: 2016-08-24
-Title: Bayesian adaptive spline surfaces
+Date: 2016-12-08
+Title: Bayesian Adaptive Spline Surfaces
 Description: Bayesian fitting methods and sensitivity for adaptive spline surfaces.  Similar methodology to Bayesian multivariate adaptive regression splines (BMARS), but naming is changed to avoid MARS copyright infringement.  Built to handle continuous and categorical inputs as well as functional or scalar output.
 Author: Devin Francom <dfrancom@ucsc.edu>
 Maintainer: Devin Francom <dfrancom@ucsc.edu>

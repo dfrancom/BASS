@@ -74,6 +74,7 @@ Fits a BASS model using RJMCMC.  Optionally uses parallel tempering to improve m
 Explores BASS model space by RJMCMC.  The BASS model has \deqn{y = f(x) + \epsilon,  \epsilon ~ N(0,\sigma^2)} \deqn{f(x) = a_0 + \sum_{m=1}^M a_m B_m(x)} and \eqn{B_m(x)} is a BASS basis function (tensor product of spline basis functions). We use priors \deqn{a ~ N(0,\sigma^2/\tau (B'B)^{-1})} \deqn{M ~ Poisson(\lambda)} as well as the priors mentioned in the arguments above.
 }
 \examples{
+\dontrun{
 ####################################################################################################
 ### univariate example
 ####################################################################################################
@@ -129,7 +130,7 @@ ypred<-matrix(f(Xpred),nrow=npred)
 pred<-predict(mod,xpred) # posterior predictive samples (each is a curve)
 matplot(ypred,apply(pred,2:3,mean),type='l',xlab='observed',ylab='mean prediction')
 abline(a=0,b=1,col=2)
-matplot(ypred,type='l') # actual
+matplot(t(ypred),type='l') # actual
 matplot(t(apply(pred,2:3,mean)),type='l') # mean prediction
 
 ## sensitivity
@@ -138,6 +139,7 @@ plot(sens) # functional variable labelled "a"
 
 sens.func<-sobol(mod,mcmc.use=1:10,func.var=1)
 plot(sens.func)
+}
 }
 \seealso{
 \link{predict.bass} for prediction and \link{sobol} for sensitivity analysis.

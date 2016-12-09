@@ -3,7 +3,7 @@ output: github_document
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-
+<!--
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -11,6 +11,6 @@ knitr::opts_chunk$set(
   fig.path = "README-"
 )
 ```
+-->
 
-
-BASS uses
+BASS fits Bayesian Adaptive Spline Surfaces (similar to Bayesian Multivariate Adaptive Regression Splines, or BMARS).
