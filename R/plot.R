@@ -1,3 +1,7 @@
+###############################################################
+## plot objects
+###############################################################
+
 #' @title BASS Plot Diagnostics
 #'
 #' @description Generate diagnostic plots for BASS model fit.
@@ -5,7 +9,7 @@
 #' @param quants quantiles for intervals, if desired.  NULL if not desired.
 #' @param ... graphical parameters.
 #' @details The first two plots are trace plots for diagnosing convergence.  The third plot is posterior predicted vs observed, with intervals for predictions.  The fourth plot is a histogram of the residuals (of the posterior mean model), with a red curve showing the assumed Normal density (using posterior mean variance).
-#' @keywords BMARS
+#' @keywords
 #' @export 
 #' @import graphics
 #' @seealso \link{bass}, \link{predict.bass}, \link{sobol}
@@ -40,7 +44,7 @@ plot.bass<-function(x,quants=c(.025,.975),...){
   curve(dnorm(x,sd=mean(s)),col=2,add=T)
   par(op)
 }
-#@importFrom graphics plot abline boxplot curve hist matplot par points segments text
+
 
 #' @title Plot BASS sensitivity indices
 #'

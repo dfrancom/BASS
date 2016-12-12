@@ -41,5 +41,6 @@ Performs analytical Sobol' decomposition for each MCMC iteration in mcmc.use (ea
 \seealso{
 \link{bass} for model fitting and \link{predict.bass} for prediction.
 }
-\keyword{BMARS}
+\keyword{Sobol}
+\keyword{decomposition}
 

@@ -31,7 +31,6 @@ birth_cat<-function(curr,prior,data){
   if(log(runif(1)) < alpha){
     curr<-addBasis(curr,cand.cat,qf.cand.list,prior)
     curr<-addBasisCat(curr,cand.cat,qf.cand.list,prior)
-    # if type has cat and des, want to update curr$dc.basis also
   }
   return(curr)
 }
@@ -56,7 +55,6 @@ death_cat<-function(curr,prior,data){
 
   lpbmcmp<-logProbChangeModCat(curr$n.int.cat[basis],curr$vars.cat[basis,1:curr$n.int.cat[basis]],I.vec.cat,z.vec.cat,data$pcat,data$nlevels,curr$sub.size[basis,],prior$maxInt.cat,prior$miC)
   
-
   # calculate log acceptance probability
   alpha<- data$temp.ladder[curr$temp.ind]*(.5/curr$s2*(qf.cand.list$qf-curr$qf) - log(curr$lam) + log(data$birth.prob.last/data$death.prob) + log(curr$nbasis) + lpbmcmp)
 

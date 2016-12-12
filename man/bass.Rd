@@ -144,5 +144,10 @@ plot(sens.func)
 \seealso{
 \link{predict.bass} for prediction and \link{sobol} for sensitivity analysis.
 }
-\keyword{BMARS}
+\keyword{analysis}
+\keyword{data}
+\keyword{functional}
+\keyword{nonparametric}
+\keyword{regression,}
+\keyword{splines,}
 

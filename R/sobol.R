@@ -1,3 +1,7 @@
+############################################################
+## get Sobol decomposition
+############################################################
+
 #' @title BASS Sensitivity Analysis
 #'
 #' @description Decomposes the variance of the BASS model into variance due to main effects, two way interactions, and so on, similar to the ANOVA decomposition for linear models.  Uses the Sobol' decomposition, which can be done analytically for MARS models.
@@ -16,7 +20,7 @@
 #'  \item{names.ind}{a vector of names of the main effects and interactions used.}
 #'  \item{xx}{the grid used for the functional variable.}
 #'
-#' @keywords BMARS
+#' @keywords Sobol decomposition
 #' @seealso \link{bass} for model fitting and \link{predict.bass} for prediction.
 #' @export
 #' @examples
@@ -73,10 +77,7 @@ sobol<-function(bassMod,mcmc.use=NULL,func.var=NULL,xx.func.var=NULL,verbose=TRU
 
 
 
-########################################################################
-## get sobol indices
-########################################################################
-
+## get sobol indices - no functional
 
 sobol_des<-function(bassMod,mcmc.use,verbose){
   models<-bassMod$model.lookup[mcmc.use] # only do the heavy lifting once for each model
@@ -190,7 +191,7 @@ sobol_des<-function(bassMod,mcmc.use,verbose){
 
 
 
-
+## get sobol indices - functional
 
 sobol_des_func<-function(bassMod,mcmc.use,verbose,func.var,xx.func.var){
   models<-bassMod$model.lookup[mcmc.use] # only do the heavy lifting once for each model
@@ -267,7 +268,6 @@ sobol_des_func<-function(bassMod,mcmc.use,verbose,func.var,xx.func.var){
           sob[mod.ind,int.l.ind,]<-sob.l
         }
       }
-      #browser()
       
       kk<-0
       for(ii in mod.ind){
@@ -281,6 +281,7 @@ sobol_des_func<-function(bassMod,mcmc.use,verbose,func.var,xx.func.var){
     }
   }
   
+  # reorder for display
   sob.reorder<-NA
   sob.reorder[1:length(names.ind[[1]])]<-mixOrd(allCombs$dispNames[[1]])
   for(l in 2:length(names.ind)){
@@ -295,8 +296,8 @@ sobol_des_func<-function(bassMod,mcmc.use,verbose,func.var,xx.func.var){
   return(ret)
 }
 
-
-getTot<-function(combs,sob,names.ind,p,maxInt.tot,aa){ # get total sensitivity indices
+# get total sensitivity indices
+getTot<-function(combs,sob,names.ind,p,maxInt.tot,aa){ 
   vars.use<-unique(unlist(combs))
   puse<-length(vars.use)
   ncombs<-sapply(combs,ncol)
@@ -315,11 +316,14 @@ getTot<-function(combs,sob,names.ind,p,maxInt.tot,aa){ # get total sensitivity i
   return(tot)
 }
 
+
+
 ########################################################################
 ## processing functions
 ########################################################################
 
-makeBasisMatrixVar<-function(i,nbasis,vars,signs,knots.ind,q,xxt,n.int,xx.train,var){ # make for only one variable
+## make for only one variable
+makeBasisMatrixVar<-function(i,nbasis,vars,signs,knots.ind,q,xxt,n.int,xx.train,var){ 
   n<-ncol(xxt)
   tbasis.mat<-matrix(nrow=nbasis+1,ncol=n)
   tbasis.mat[1,]<-1
@@ -337,6 +341,7 @@ makeBasisMatrixVar<-function(i,nbasis,vars,signs,knots.ind,q,xxt,n.int,xx.train,
   return(tbasis.mat)
 }
 
+## get all the variable combinations used in the models
 getCombs<-function(bassMod,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL){
   des.labs<-which(bassMod$cx=='numeric')
   cat.labs<-which(bassMod$cx=='factor')
@@ -390,13 +395,12 @@ getCombs<-function(bassMod,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL
     }
   }
 
-  #browser()
   num.ind<-sapply(combs,ncol)
   cs.num.ind<-cumsum(num.ind) # used for indexing
   return(list(combs=combs,names.ind=names.ind,ll=ll,num.ind=num.ind,cs.num.ind=cs.num.ind,aa=aa,dispCombs=dispCombs,dispNames=dispNames))
 }
 
-
+## process model information into a temporary list
 get_tl<-function(bassMod,mcmc.use.mod,M,mod,p,q,cs.num.ind,combs,func.var=NULL,xx.func.var=NULL){
   a<-bassMod$beta[mcmc.use.mod,2:(M+1),drop=F] # basis coefficients excluding intercept
   vf<-bassMod$vars.func[mod,1:M,]
@@ -433,29 +437,20 @@ get_tl<-function(bassMod,mcmc.use.mod,M,mod,p,q,cs.num.ind,combs,func.var=NULL,x
           n.int.func<-bassMod$n.int.func[mod,k]
           knotInd.func<-bassMod$knotInd.func[mod,k,1:n.int.func]
           vars.func<-bassMod$vars.func[mod,k,1:n.int.func]
-          
-            t[k,vars.func+sum(bassMod$pdes)]<-bassMod$xx.func[cbind(knotInd.func,vars.func)]
-             s[k,vars.func+sum(bassMod$pdes)]<-bassMod$signs.func[mod,k,1:n.int.func]
-          #use<-vars.func%in%func.var
-          #vars.func<-vars.func[use]
-          #vars.func[vars.func>func.var]<-vars.func[vars.func>func.var]-1
-          # if(any(use)){
-          #   t[k,vars.func+sum(bassMod$pdes)]<-bassMod$xx.func[cbind(knotInd.func[use],vars.func)]
-          #   s[k,vars.func+sum(bassMod$pdes)]<-bassMod$signs.func[mod,k,1:n.int.func][use]
-          # }
+          t[k,vars.func+sum(bassMod$pdes)]<-bassMod$xx.func[cbind(knotInd.func,vars.func)]
+          s[k,vars.func+sum(bassMod$pdes)]<-bassMod$signs.func[mod,k,1:n.int.func]
         }
       }
     }
   }
-  #browser()
   if(!is.null(func.var)){
-    #ind<-ind[-(mod$pdes+func.var)]
     s[,bassMod$pdes+func.var]<-t[,bassMod$pdes+func.var]<-0
   }
   tl<-list(s=s,t=t,q=q,a=a,M=M,Kind=Kind,cs.num.ind=cs.num.ind,combs=combs,xx=xx.func.var,pfunc=sum(bassMod$pfunc),cat=bassMod$cat,pdes=sum(bassMod$pdes)) #temporary list
   return(tl)
 }
 
+## process model information into a temporary list - categorical part
 add_tlCat<-function(tl,bassMod,mcmc.use.mod,mod){
   tl$pcat<-bassMod$pcat
   tl$sub.cnt<-matrix(0,nrow=tl$M,ncol=tl$pcat)
@@ -481,10 +476,10 @@ add_tlCat<-function(tl,bassMod,mcmc.use.mod,mod){
   return(tl)
 }
 
+## process model information into a temporary list - evaluate integrals (from Chen 2004, but vectorized as much as possible)
 add_tl<-function(tl,p){
-  # TODO: these need better names
-  p.df<-sum(tl$pdes)+sum(tl$pfunc)#+tl$pfunc
-  p.use<-p#p.df+sum(tl$pcat)
+  p.df<-sum(tl$pdes)+sum(tl$pfunc)
+  p.use<-p
   if(p.df==0){
     C1.all.cat<-tl$sub.cnt
     C1.all<-C1.all.cat
@@ -527,6 +522,7 @@ add_tl<-function(tl,p){
   return(tl)
 }
 
+## sorting function with mixed numerical and character
 mixSort<-function(x){
   ind<-is.na(suppressWarnings(as.numeric(x)))
   num<-which(!ind)
@@ -534,14 +530,12 @@ mixSort<-function(x){
   return(c(sort(as.numeric(x[num])),x[char]))
 }
 
+## ordering function with mixed numerical and character
 mixOrd<-function(x){
   ind<-is.na(suppressWarnings(as.numeric(x)))
   ord<-1:length(x)
   num<-which(!ind)
   char<-which(ind)
-  #char.ord<-numeric(0)
-  #if(length(char)>0)
-  #  char.ord<-1:length(char)+length(num)
   return(c(ord[num][order(as.numeric(x[num]))],ord[char]))
 }
 
@@ -549,14 +543,16 @@ mixOrd<-function(x){
 ########################################################################
 ## functions for Sobol decomposition - these all use scaling from const function
 ########################################################################
-pCoef<-function(i,q){ # refer to paper
+## refer to francom 2016 paper
+pCoef<-function(i,q){ 
   factorial(q)^2*(-1)^i/(factorial(q-i)*factorial(q+1+i))
 }
+## integral from a to b of [(x-t1)(x-t2)]^q when q positive integer
 intabq<-function(a,b,t1,t2,q){
-  #integral from a to b of [(x-t1)(x-t2)]^q when q positive integer
   sum(pCoef(0:q,q)*(b-t1)^(q-0:q)*(b-t2)^(q+1+0:q)) - sum(pCoef(0:q,q)*(a-t1)^(q-0:q)*(a-t2)^(q+1+0:q))
 }
-C2<-function(k,m,n,tl){ # integral of two pieces of tensor that have same variable - deals with sign, truncation
+## integral of two pieces of tensor that have same variable - deals with sign, truncation
+C2<-function(k,m,n,tl){ 
   q<-tl$q
   t1<-tl$t[n,k]
   s1<-tl$s[n,k]
@@ -591,18 +587,21 @@ C2<-function(k,m,n,tl){ # integral of two pieces of tensor that have same variab
   }
 }
 
+## same as C2, but categorical
 C2Cat<-function(k,m,n,tl){ # k is variable (categorical), m & n are basis functions
   return(length(intersect(tl$sub[[m]][[k]],tl$sub[[n]][[k]]))/tl$nlevels[k])
 }
 
-VuMat<-function(u,tl){ # sobol main effect variances - where most of the time is spent
+## matrix used in sobol main effect variances - where most of the time is spent
+VuMat<-function(u,tl){ 
   CCu<-apply(tl$C1.all.prod3[,,u,drop=F],1:2,prod) # TODO: utilize symmetry
   C2.temp<-apply(tl$C2.all2[,,u,drop=F],1:2,prod)
   mat<-tl$CC*(C2.temp/CCu-1)
   return(mat)
 }
 
-Vu<-function(u,tl){ # sobol main effect variances - where most of the time is spent
+## sobol main effect variances
+Vu<-function(u,tl){
   mat<-VuMat(u,tl)
   out<-apply(tl$a,1,function(x) t(x)%*%mat%*%x)
   if(any(out<0))
@@ -610,7 +609,8 @@ Vu<-function(u,tl){ # sobol main effect variances - where most of the time is sp
   return(out)
 }
 
-Vu_des_func<-function(u,tl){ # sobol main effect variances - where most of the time is spent
+## functional sobol main effect variances
+Vu_des_func<-function(u,tl){ 
   mat<-VuMat(u,tl)
   nx<-length(tl$xx)
   nmodels<-length(tl$a[,1])
@@ -624,7 +624,8 @@ Vu_des_func<-function(u,tl){ # sobol main effect variances - where most of the t
   return(out)
 }
 
-VuInt<-function(u,tl){ # sobol interaction variances
+## sobol interaction variances
+VuInt<-function(u,tl){ 
   add<-0
   len<-length(u)
   for(l in 1:len){
@@ -637,7 +638,8 @@ VuInt<-function(u,tl){ # sobol interaction variances
   return(add)
 }
 
-VuInt_des_func<-function(u,tl){ # sobol interaction variances
+## sobol interaction variances - functional
+VuInt_des_func<-function(u,tl){
   add<-0
   len<-length(u)
   #browser()

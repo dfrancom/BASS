@@ -1,3 +1,7 @@
+########################################################################
+## main BASS function
+########################################################################
+
 #' @title Bayesian Adaptive Spline Surfaces (BASS)
 #'
 #' @description Fits a BASS model using RJMCMC.  Optionally uses parallel tempering to improve mixing.  Can be used with scalar or functional response.  Also can use categorical inputs.
@@ -29,7 +33,7 @@
 #' @param verbose logical; should progress be displayed?
 #' @details Explores BASS model space by RJMCMC.  The BASS model has \deqn{y = f(x) + \epsilon,  \epsilon ~ N(0,\sigma^2)} \deqn{f(x) = a_0 + \sum_{m=1}^M a_m B_m(x)} and \eqn{B_m(x)} is a BASS basis function (tensor product of spline basis functions). We use priors \deqn{a ~ N(0,\sigma^2/\tau (B'B)^{-1})} \deqn{M ~ Poisson(\lambda)} as well as the priors mentioned in the arguments above.
 #' @return An object of class 'bass'.  The other output will only be useful to the advanced user.  Rather, users may be interested in prediction and sensitivity analysis, which are obtained by passing the entire object to the predict.bass or sobol functions.
-#' @keywords BMARS
+#' @keywords nonparametric regression, splines, functional data analysis
 #' @seealso \link{predict.bass} for prediction and \link{sobol} for sensitivity analysis.
 #' @export
 #' @import stats
@@ -41,10 +45,47 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   ########################################################################
   ## setup
 
+  ## check inputs
+  
+  if(!posInt(maxInt))
+    stop('invalud maxInt')
+  if(!posInt(maxInt.func))
+    stop('invalud maxInt.func')
+  if(!posInt(maxInt.cat))
+    stop('invalud maxInt.cat')
+  if(!posInt(degree))
+    stop('invalud degree')
+  if(!is.null(npart)){
+    if(!posInt(npart))
+      stop('invalud npart')
+  }
+  if(!is.null(npart.func)){
+    if(!posInt(npart.func))
+      stop('invalud npart.func')
+  }
+  if(!is.null(start.temper)){
+    if(!posInt(start.temper))
+      stop('invalud start.temper')
+  }
+  if(!posInt(nmcmc))
+    stop('invalud nmcmc')
+  if(!posInt(nburn))
+    stop('invalud nburn')
+  if(!posInt(thin))
+    stop('invalud thin')
+  if(nburn>=nmcmc)
+    stop('nmcmc must be greater than nburn')
+  if(thin>(nmcmc-nburn))
+    stop('combination of thin, nmcmc and nburn results in no samples')
+  if(any(c(g1,g2,h1,h2,a.beta.prec,b.beta.prec,w1,w2)<0))
+    stop('g1,g2,h1,h2,a.beta.prec,b.beta.prec,w1,w2 must be greater than 0 (g1 and g2 may be equal to 0)')
+  
+  ## process data
+  
   xx<-as.data.frame(xx)
   dx<-dim(xx)
   dxf<-dim(xx.func)
-  dy<-dim(y) # need to change this for array input
+  dy<-dim(y)
   if(any(dy==1))
     y<-c(y)
   dy<-dim(y)
@@ -79,7 +120,7 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   }
 
   if(func){
-    if(dx[1]==dxf[1])
+    if(dx[1]==dxf[1]) # this is dangerous because we would automatically correct it if we could tell it was wrong, but can't tell if it is wrong here
       warning('Possible dimension problem: make sure rows of y correspond to functional data')
   }
   
@@ -105,7 +146,6 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   cat.vars<-which(cx.factor)
   pdes<-length(des.vars)
   pcat<-length(cat.vars)
-  # do we even need xx.des and xx.cat if we have these indexes?
 
   type<-''
   if(des)
@@ -115,8 +155,10 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   if(func)
     type<-paste(type,'func',sep='_')
 
-  # so cases are des,des_cat,des_func,des_cat_func,cat,cat_func
+  # so cases are des, cat, des_cat, des_func, cat_func, des_cat_func
 
+  ## handle tempering arguements
+  
   if(is.null(temp.ladder)){
     temp.ladder<-1
   }
@@ -125,6 +167,8 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     if(length(temp.ladder)==0)
       stop('invalid temp.ladder (temperatures too small)')
   }
+  if(max(temp.ladder)!=1)
+    warning('max(temp.ladder) should equal 1')
   ntemps<-length(temp.ladder)
   if(ntemps==1){
     start.temper<-nmcmc
@@ -132,9 +176,8 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   temp.val<-matrix(nrow=nmcmc,ncol=ntemps)
 
 
+  ## make a data object
 
-
-  # data object
   data<-list()
   data$y<-y
   if(des){
@@ -181,6 +224,9 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   data$birth.prob.last<-1/3
   data$death.prob<-1/3
   data$temp.ladder<-temp.ladder
+  
+  
+  ## make a prior object
 
   npart.des<-npart
   if(is.null(npart.des)){
@@ -219,7 +265,9 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     prior$minInt<-1
   prior$miC<-abs(prior$minInt-1)
 
-  # current mcmc state (can use from previous)
+  
+  ## make an object to store current MCMC state (one for each temperature)
+  
   if(is.null(curr.list)){
     curr.list<-list()
     for(i in 1:ntemps){
@@ -289,12 +337,15 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     }
   }
 
-  # define functions according to type.  Doing eval parse every time the functions were used is slow.
+  # define functions according to type.  Doing eval parse every time the functions are used is slow.
   funcs<-list()
   funcs$birth<-eval(parse(text=paste('birth',type,sep='')))
   funcs$death<-eval(parse(text=paste('death',type,sep='')))
   funcs$change<-eval(parse(text=paste('change',type,sep='')))
   funcs$getYhat<-eval(parse(text=paste('getYhat',type,sep='')))
+  
+  
+  ## prepare storage objects for mcmc draws
   
   nmod.max<-(nmcmc-nburn)/thin # max number of models (models don't necessarily change every iteration)
   if(des){
@@ -340,14 +391,14 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   n.models<-keep.sample<-0 # indexes for storage
   for(i in 2:nmcmc){
 
-    ## update model for each temperature
-    #curr.list<-parLapply(cluster,curr.list,updateMCMC)
-    ncores<-1
-    curr.list<-parallel::mclapply(curr.list,updateMCMC,prior=prior,data=data,funcs=funcs,mc.preschedule=T,mc.cores=ncores)
-    # TODO: DO SOMETHING LIKE THIS BUT KEEP EVERYTHING SEPARATE ON THE CLUSTER, all we need is lpost, cmod
+    ## update model for each temperature - can be parallel
     
-
+    #curr.list<-parLapply(cluster,curr.list,updateMCMC)
+    curr.list<-parallel::mclapply(curr.list,updateMCMC,prior=prior,data=data,funcs=funcs,mc.preschedule=T,mc.cores=1)
+    # TODO: DO SOMETHING LIKE THIS BUT KEEP EVERYTHING SEPARATE ON THE CLUSTER, all we need is lpost, cmod - MPI
+    
     ## parallel tempering swap
+    
     if(i>start.temper){# & (i%%20==0)){ #only start after a certain point, and only try every 20
       # sample temp.ind.swap from 1:(ntemps-1), then swap with temp.ind.swap+1
       temp.ind.swap1<-sample(1:(ntemps-1),size=1) # corresponds to temperature temp.ladder[temp.ind.swap1]
@@ -433,7 +484,7 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     if(verbose & i%%1000==0){
       pr<-c('MCMC iteration',i,timestamp(prefix='#--',suffix='--#',quiet=T),'nbasis:',curr.list[[cold.chain]]$nbasis)
       if(i>start.temper)
-        pr<-c(pr,'tempering acc',count.swap.disp/(1000/(ntemps-1)))
+        pr<-c(pr,'tempering acc',count.swap.disp/(1000/(ntemps-1))) # swap acceptance rate for last 1000
       cat(pr,'\n')
       count.swap.disp<-rep(0,ntemps-1) # reset after displaying
     }
@@ -523,251 +574,4 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   ret<-c(out.yhat,out,out.des,out.cat,out.func)
   class(ret)<-'bass'
   return(ret)
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-########################################################################
-## make basis functions
-########################################################################
-
-pos<-function(vec){ # makes negative values 0
-  replace(vec,vec<0,0)
-}
-const<-function(signs,knots,degree){ # largest value of basis function, assuming x's in [0,1], used for scaling
-  cc<-prod(((signs+1)/2 - signs*knots))^degree
-  if(cc==0)
-    return(1)
-  return(cc)
-} # since a product, can find for functional & categorical pieces separately, take product
-makeBasis<-function(signs,vars,knots,datat,degree){ #faster than apply
-  cc<-const(signs,knots,degree)
-  temp1<-pos(signs*(datat[vars,,drop=F]-knots))^degree
-  if(length(vars)==1){
-    return(c(temp1)/cc)
-  } else{
-    temp2<-1
-    for(pp in 1:length(vars)){
-      temp2<-temp2*temp1[pp,]
-    }
-    return(temp2/cc)
-  }
-}
-
-makeBasisCat<-function(vars,sub,data){
-  temp<-1
-  for(ii in 1:length(vars)){
-    temp<-temp*as.numeric(data[,vars[ii]] %in% sub[[ii]])
-  }
-  return(temp)
-}
-
-########################################################################
-## functions used in MCMC
-########################################################################
-
-# CHANGE FOR FUNC
-logProbChangeMod<-function(n.int,vars,I.vec,z.vec,p,vars.len,maxInt,miC){ # reversibility term
-  if(n.int==1){ #for acceptance ratio
-    out<-log(I.vec[n.int+miC])-log(2*p*vars.len[vars]) + #proposal
-      log(2*p*vars.len[vars])+log(maxInt) # prior
-  } else{
-    # perms<-permutations(n.int,n.int,vars)
-    # sum.perm<-sum(apply(perms,1,function(row){1/prod(1-cumsum(z.vec[row][-n.int]))}))
-    # lprob.vars.noReplace<-sum(log(z.vec[vars]))+log(sum.perm)
-    #require(BiasedUrn) # this is much faster than above (esp for large maxInt)
-    x<-rep(0,p)
-    x[vars]<-1
-    #lprob.vars.noReplace<-log(BiasedUrn::dMWNCHypergeo(x,rep(1,p),n.int,z.vec)) - do this in combination with imports: BiasedUrn in DESCRIPTION file, but that has a limit to MAXCOLORS
-    lprob.vars.noReplace<-log(dMWNCHypergeo(x,rep(1,p),n.int,z.vec))
-    out<-log(I.vec[n.int+miC])+lprob.vars.noReplace-n.int*log(2)-sum(log(vars.len[vars])) + # proposal
-      +n.int*log(2)+sum(log(vars.len[vars]))+lchoose(p,n.int)+log(maxInt) # prior
-  }
-  return(out)
-}
-
-
-logProbChangeModCat<-function(n.int,vars,I.vec,z.vec,p,nlevels,sub.size,maxInt,miC){
-  if(n.int==1){ #for acceptance ratio
-    out<-log(I.vec[n.int+miC])-log(p*(nlevels[vars]-1))-lchoose(nlevels[vars],sub.size[1:n.int]) + # proposal
-      log(p*(nlevels[vars]-1))+lchoose(nlevels[vars],sub.size[1:n.int])+log(maxInt) # prior
-  } else{
-    x<-rep(0,p)
-    x[vars]<-1
-    lprob.vars.noReplace<-log(dMWNCHypergeo(x,rep(1,p),n.int,z.vec))
-    out<-log(I.vec[n.int+miC])+lprob.vars.noReplace-n.int*sum(log(nlevels[vars]-1))-sum(lchoose(nlevels[vars],sub.size[1:n.int])) + # proposal
-      n.int*sum(log(nlevels[vars]-1))+sum(lchoose(nlevels[vars],sub.size[1:n.int]))+lchoose(p,n.int)+log(maxInt) # prior
-  }
-  if(length(out)>1)
-    browser()
-  if(is.na(out))
-    browser()
-  return(out)
-}
-
-lp<-function(curr,prior,data){ # log posterior
-  if(curr$nbasis==0)
-    return(NA)
-  tt<-(
-    - (curr$s2.rate+prior$g2)/curr$s2
-    -(data$n/2+1+(curr$nbasis+1)/2 -prior$g1)*log(curr$s2)
-    + sum(log(abs(diag(curr$R))))
-    + (prior$a.beta.prec+(curr$nbasis+1)/2-1)*log(curr$beta.prec) - prior$b.beta.prec*curr$beta.prec
-    - (curr$nbasis+1)/2*log(2*pi)
-    + (prior$h1+curr$nbasis-1)*log(curr$lam) - curr$lam*(prior$h2+1)
-  )
-  #priors for basis parameters
-  if(data$des){
-    tt<-tt+(
-      - sum(curr$n.int.des)*log(2)
-      - sum(lchoose(data$pdes,curr$n.int.des))
-      - sum(log(data$vars.len.des[na.omit(curr$vars.des)]))
-      - curr$nbasis*log(prior$maxInt.des)
-    )
-  }
-  if(data$cat){
-    tt<-tt+(
-      - sum(sapply(1:curr$nbasis,function(i) curr$n.int.cat[i]*sum(log(data$nlevels[na.omit(curr$vars.cat[i,])]-1))))
-      - sum(sapply(1:curr$nbasis,function(i) sum(lchoose(data$nlevels[na.omit(curr$vars.cat[i,])],curr$sub.size[i,1:curr$n.int.cat[i]]))))
-      - sum(lchoose(data$pcat,curr$n.int.cat))
-      - curr$nbasis*log(prior$maxInt.cat)
-    )
-  }
-  if(data$func){
-    tt<-tt+(
-      - sum(curr$n.int.func)*log(2)
-      - sum(lchoose(data$pfunc,curr$n.int.func))
-      - sum(log(data$vars.len.func[na.omit(curr$vars.func)]))
-      - curr$nbasis*log(prior$maxInt.func)
-    )
-  }
-  
-  return(tt)
-}
-
-getQf<-function(XtX,Xty){ # get quadratic form that shows up in acceptance probability
-  R<-tryCatch(chol(XtX), error=function(e) matrix(F))
-  if(R[1,1]){
-    dr<-diag(R)
-    if(length(dr)>1){
-      if(max(dr[-1])/min(dr)>1e3) # TODO: this is a hack, otherwise we get huge variance inflation in beta
-        return(NULL)
-    }
-    bhat<-backsolve(R,forwardsolve(R,Xty,transpose=T,upper.tri=T))
-    qf<-crossprod(bhat,Xty)# same as sum((R%*%bhat)^2)
-    return(list(R=R,bhat=bhat,qf=qf))
-  } else{
-    return(NULL)
-  }
-}
-
-rgammaTemper<-function(n,shape,rate,temper){ # sample a tempered gamma
-  rgamma(n,temper*(shape-1)+1,temper*rate)
-}
-rigammaTemper<-function(n,shape,scale,temper){ # sample a tempered IG
-  1/rgamma(n,temper*(shape+1)-1,rate=temper*scale)
-}
-
-########################################################################
-## MCMC update
-########################################################################
-
-
-updateMCMC<-function(curr,prior,data,funcs=funcs){
-  
-  ## RJMCMC update
-  
-  u<-sample(1:3,size=1)
-  if(curr$nbasis==0){
-    u<-1 # birth for sure
-  }
-  if(curr$nbasis==prior$maxBasis){
-    u<-sample(2:3,size=1) # no birth
-  }
-  if(u==1){ # birth
-    curr<-funcs$birth(curr,prior,data)
-  } else if(u==2){ # death
-    curr<-funcs$death(curr,prior,data)
-  } else{ # change
-    curr<-funcs$change(curr,prior,data)
-  }
-  
-  ## Gibbs updates
-  
-  # beta
-  curr$beta<-curr$bhat/(1+curr$beta.prec)+curr$R.inv.t%*%rnorm(curr$nc)*sqrt(curr$s2/(1+curr$beta.prec)/data$temp.ladder[curr$temp.ind])
-  
-  # lambda
-  lam.a<-prior$h1+curr$nbasis
-  lam.b<-prior$h2+1
-  curr$lam<-rgammaTemper(1,lam.a,lam.b,data$temp.ladder[curr$temp.ind])
-  
-  # s2
-  qf2<-crossprod(curr$R%*%curr$beta)
-  curr$s2.rate<-(data$ssy + (1+curr$beta.prec)*qf2 - 2*crossprod(curr$beta,curr$Xty[1:curr$nc]))/2
-  s2.a<-prior$g1+(data$n+curr$nbasis+1)/2
-  s2.b<-prior$g2+curr$s2.rate
-  if(s2.b<=0){
-    prior$g2<-prior$g2+1
-    s2.b<-prior$g2+curr$s2.rate
-    warning('Increased g2 for numerical stability')
-  }
-  curr$s2<-rigammaTemper(1,s2.a,s2.b,data$temp.ladder[curr$temp.ind])
-  if(is.nan(curr$s2) | is.na(curr$s2)) # major variance inflation, get huge betas from curr$R.inv.t, everything becomes unstable
-    browser()
-  if(curr$s2==0 | curr$s2>1e10){ # tempering instability, this temperature too small
-    curr$s2<-runif(1,0,1e6)
-    prior$g2<-prior$g2+1
-    warning('Small temperature too small...increased g2 for numerical stability')
-    #browser()
-  }
-  
-  
-  # beta.prec
-  beta.prec.a<-prior$a.beta.prec+(curr$nbasis+1)/2
-  beta.prec.b<-prior$b.beta.prec+1/(2*curr$s2)*qf2
-  curr$beta.prec<-rgammaTemper(1,beta.prec.a,beta.prec.b,data$temp.ladder[curr$temp.ind])
-  
-  ## save log posterior
-  curr$lpost<-lp(curr,prior,data)
-  
-  return(curr)
-}
-
-scale.range<-function(x,r=NULL){ # x is a vector
-  if(is.null(r))
-    r<-range(x)
-  (x-r[1])/(r[2]-r[1])
-}
-unscale.range<-function(x,r){
-  x*(r[2]-r[1])+r[1]
-}
-
-getYhat_des<-function(curr,nb){
-  curr$des.basis%*%curr$beta
-}
-getYhat_cat<-function(curr,nb){
-  curr$cat.basis%*%curr$beta
-}
-getYhat_des_cat<-function(curr,nb){
-  curr$dc.basis%*%curr$beta
-}
-getYhat_des_func<-function(curr,nb){
-  tcrossprod(curr$des.basis%*%diag(c(curr$beta),nb+1),curr$func.basis)
-}
-getYhat_cat_func<-function(curr,nb){
-  tcrossprod(curr$cat.basis%*%diag(c(curr$beta),nb+1),curr$func.basis)
-}
-getYhat_des_cat_func<-function(curr,nb){
-  tcrossprod(curr$dc.basis%*%diag(c(curr$beta),nb+1),curr$func.basis)
 }
