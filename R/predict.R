@@ -13,7 +13,6 @@
 #' @param ... further arguments passed to or from other methods.
 #' @details Efficiently predicts when two MCMC iterations have the same basis functions (but different weights).
 #' @return If model output is a scalar, this returns a matrix with the same number of rows as \code{newdata} and columns corresponding to the the MCMC iterations \code{mcmc.use}.  These are samples from the posterior predictive distribution.  If model output is functional, this returns an array with first dimension corresponding to MCMC iteration, second dimension corresponding to the rows of \code{newdata}, and third dimension corresponding to the rows of \code{newdata.func}.
-#' @keywords 
 #' @seealso \link{bass} for model fitting and \link{sobol} for sensitivity analysis.
 #' @export
 #' @examples

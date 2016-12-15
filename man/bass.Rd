@@ -140,6 +140,9 @@ plot(sens) # functional variable labelled "a"
 sens.func<-sobol(mod,mcmc.use=1:10,func.var=1)
 plot(sens.func)
 }
+
+## minimal example for CRAN testing
+mod<-bass(1:2,1:2,nmcmc=2,nburn=1)
 }
 \seealso{
 \link{predict.bass} for prediction and \link{sobol} for sensitivity analysis.

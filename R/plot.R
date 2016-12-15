@@ -9,7 +9,6 @@
 #' @param quants quantiles for intervals, if desired.  NULL if not desired.
 #' @param ... graphical parameters.
 #' @details The first two plots are trace plots for diagnosing convergence.  The third plot is posterior predicted vs observed, with intervals for predictions.  The fourth plot is a histogram of the residuals (of the posterior mean model), with a red curve showing the assumed Normal density (using posterior mean variance).
-#' @keywords
 #' @export 
 #' @import graphics
 #' @seealso \link{bass}, \link{predict.bass}, \link{sobol}
@@ -52,7 +51,6 @@ plot.bass<-function(x,quants=c(.025,.975),...){
 #' @param x a \code{bassSob} object, returned from \code{sobol}.
 #' @param ... graphical parameters.
 #' @details If \code{func.var} in the call to \code{sobol} was \code{NULL}, this returns boxplots of sensitivity indices and total sensitivity indices.  If there were functional variables, they are labeled with letters alphabetically.  Thus, if I fit a model with 4 categorical/continuous inputs and 2 functional inputs, the functional inputs are labeled a and b.  If \code{func.var} was not \code{NULL}, then posterior mean functional sensitivity indices are plotted, along with the functional partitioned variance.  Variables and interactions that are excluded did not explain any varaince.
-#' @keywords BMARS
 #' @export
 #' @seealso \link{bass}, \link{predict.bass}, \link{sobol}
 #' @examples
