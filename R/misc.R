@@ -15,7 +15,9 @@ rigammaTemper<-function(n,shape,scale,temper){
 scale.range<-function(x,r=NULL){ # x is a vector
   if(is.null(r))
     r<-range(x)
-  (x-r[1])/(r[2]-r[1])
+  if((r[2]-r[1])==0)
+    return(x-r[1])
+  return((x-r[1])/(r[2]-r[1]))
 }
 ## rescale a vector between 0 and 1 to range r
 unscale.range<-function(x,r){

@@ -81,6 +81,8 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     stop('g1,g2,h1,h2,a.beta.prec,b.beta.prec,w1,w2 must be greater than 0 (g1 and g2 may be equal to 0)')
   
   ## process data
+  if(any(is.na(xx)) | any(is.na(y)))
+    stop('Current version does not allow missing data')
   
   xx<-as.data.frame(xx)
   dx<-dim(xx)
@@ -510,7 +512,6 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
        thin=thin,
        p=data$p,
        beta.prec=beta.prec,
-       step=step,
        y=y,
        log.post.cold=log.post.cold,
        curr.list=curr.list, # for restarting

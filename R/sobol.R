@@ -181,8 +181,6 @@ sobol_des<-function(bassMod,mcmc.use,verbose){
   ret<-list(S=sob,T=tot,func=F)
   class(ret)<-'bassSob'
   
-  #browser()
-  
   return(ret)
 }
 
@@ -343,7 +341,7 @@ makeBasisMatrixVar<-function(i,nbasis,vars,signs,knots.ind,q,xxt,n.int,xx.train,
 
 ## get all the variable combinations used in the models
 getCombs<-function(bassMod,uniq.models,nmodels,maxBasis,maxInt.tot,func.var=NULL){
-  des.labs<-which(bassMod$cx=='numeric')
+  des.labs<-which(bassMod$cx%in%c('numeric','integer'))
   cat.labs<-which(bassMod$cx=='factor')
   func.labs<-letters[0:sum(bassMod$pfunc)]
   labs<-c(des.labs,func.labs,cat.labs) # this is the order things end up in
