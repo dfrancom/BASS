@@ -396,7 +396,8 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     ## update model for each temperature - can be parallel
     
     #curr.list<-parLapply(cluster,curr.list,updateMCMC)
-    curr.list<-parallel::mclapply(curr.list,updateMCMC,prior=prior,data=data,funcs=funcs,mc.preschedule=T,mc.cores=1)
+    #curr.list<-parallel::mclapply(curr.list,updateMCMC,prior=prior,data=data,funcs=funcs,mc.preschedule=T,mc.cores=1)
+    curr.list<-lapply(curr.list,updateMCMC,prior=prior,data=data,funcs=funcs)
     # TODO: DO SOMETHING LIKE THIS BUT KEEP EVERYTHING SEPARATE ON THE CLUSTER, all we need is lpost, cmod - MPI
     
     ## parallel tempering swap
