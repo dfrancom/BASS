@@ -6,7 +6,7 @@
 #'
 #' @description Fits a BASS model using RJMCMC.  Optionally uses parallel tempering to improve mixing.  Can be used with scalar or functional response.  Also can use categorical inputs.
 #' @param xx a data frame or matrix of predictors.  Categorical predictors should be included as factors.
-#' @param y  a response vector (scalar response) or matrix (functional response).
+#' @param y a response vector (scalar response) or matrix (functional response).
 #' @param maxInt integer for maximum degree of interaction in spline basis functions.  Defaults to the number of predictors, which could result in overfitting.
 #' @param maxInt.func (functional response only) integer for maximum degree of interaction in spline basis functions describing the functional response.
 #' @param maxInt.cat (categorical input only) integer for maximum degree of interaction of categorical inputs.
@@ -84,6 +84,7 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   if(any(is.na(xx)) | any(is.na(y)))
     stop('Current version does not allow missing data')
   
+  y<-as.matrix(y)
   xx<-as.data.frame(xx)
   dx<-dim(xx)
   dxf<-dim(xx.func)
