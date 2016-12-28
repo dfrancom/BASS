@@ -45,10 +45,10 @@ updateMCMC<-function(curr,prior,data,funcs=funcs){
   if(is.nan(curr$s2) | is.na(curr$s2)) # major variance inflation, get huge betas from curr$R.inv.t, everything becomes unstable
     browser()
   if(curr$s2==0 | curr$s2>1e10){ # tempering instability, this temperature too small
+    browser()
     curr$s2<-runif(1,0,1e6)
     prior$g2<-prior$g2+1
     warning('Small temperature too small...increased g2 for numerical stability')
-    #browser()
   }
   
   # beta.prec
@@ -58,6 +58,6 @@ updateMCMC<-function(curr,prior,data,funcs=funcs){
   
   ## save log posterior
   curr$lpost<-lp(curr,prior,data)
-  
+
   return(curr)
 }

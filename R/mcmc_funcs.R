@@ -44,8 +44,9 @@ logProbChangeModCat<-function(n.int,vars,I.vec,z.vec,p,nlevels,sub.size,maxInt,m
 
 ## log posterior
 lp<-function(curr,prior,data){ 
-  if(curr$nbasis==0)
-    return(NA)
+  # if(curr$nbasis==0)
+  #   browser()
+  #   return(NA)
   tt<-(
     - (curr$s2.rate+prior$g2)/curr$s2
     -(data$n/2+1+(curr$nbasis+1)/2 -prior$g1)*log(curr$s2)
