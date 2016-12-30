@@ -12,7 +12,7 @@
 #' @param maxInt.cat (categorical input only) integer for maximum degree of interaction of categorical inputs.
 #' @param xx.func a vector, matrix or data frame of functional variables.
 #' @param degree degree of splines.  Stability should be examined for anything other than 1.
-#' @param maxBasis maximum number of basis functions.
+#' @param maxBasis maximum number of basis functions.  This should probably only be altered if you run out of memory.
 #' @param npart minimum number of non-zero points in a basis function.  If the response is functional, this refers only to the portion of the basis function coming from the non-functional predictors. Defaults to 20 or 0.1 times the number of observations, whichever is smaller.
 #' @param npart.func same as npart, but for functional portion of basis function.
 #' @param nmcmc number of RJMCMC iterations.
@@ -22,10 +22,10 @@
 #' @param g2 scale for IG prior on \eqn{\sigma^2}.
 #' @param h1 shape for gamma prior on \eqn{\lambda}.
 #' @param h2 rate for gamma prior on \eqn{\lambda}.  This is the primary way to control overfitting.  A large value of \code{h2} favors fewer basis functions.
-#' @param a.beta.prec shape for gamma prior on \eqn{\tau}.
-#' @param b.beta.prec rate for gamma prior on \eqn{\tau}. Defaults to one over the number of observations, which is the unit information prior.
-#' @param w1 nominal weight for degree of interaction, used in generating candidate basis functions.
-#' @param w2 nominal weight for variables, used in generating candidate basis functions.
+#' @param a.tau shape for gamma prior on \eqn{\tau}.
+#' @param b.tau rate for gamma prior on \eqn{\tau}. Defaults to one over the number of observations, which centers the prior for the basis function weights on the unit information prior.
+#' @param w1 nominal weight for degree of interaction, used in generating candidate basis functions.  Should be greater than 0.
+#' @param w2 nominal weight for variables, used in generating candidate basis functions.  Should be greater than 0.
 #' @param temp.ladder temperature ladder used for parallel tempering.  The first value should be 1 and the values should decrease.
 #' @param start.temper when to start tempering (after how many MCMC iterations).
 #' @param curr.list list of starting models (one element for each temperature), could be output from a previous run under the same model setup.
@@ -40,11 +40,11 @@
 #' @import utils
 #' @example ../examples/examples.R
 #'
-bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,h1=10,h2=10,a.beta.prec=1,b.beta.prec=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,curr.list=NULL,save.yhat=TRUE,verbose=TRUE){
+bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,h1=10,h2=10,a.tau=1,b.tau=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,curr.list=NULL,save.yhat=TRUE,verbose=TRUE){
 
   ########################################################################
   ## setup
-
+  
   ## check inputs
   
   if(!posInt(maxInt))
@@ -77,8 +77,10 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     stop('nmcmc must be greater than nburn')
   if(thin>(nmcmc-nburn))
     stop('combination of thin, nmcmc and nburn results in no samples')
-  if(any(c(g1,g2,h1,h2,a.beta.prec,b.beta.prec,w1,w2)<0))
-    stop('g1,g2,h1,h2,a.beta.prec,b.beta.prec,w1,w2 must be greater than 0 (g1 and g2 may be equal to 0)')
+  if(any(c(g1,g2)<0))
+    stop('g1 and g2 must be greater than or equal to 0')
+  if(any(c(h1,h2,a.tau,b.tau,w1,w2)<=0))
+    stop('h1,h2,a.tau,b.tau,w1,w2 must be greater than 0')
   
   ## process data
   if(any(is.na(xx)) | any(is.na(y)))
@@ -256,11 +258,11 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   prior$h2<-h2
   prior$g1<-g1
   prior$g2<-g2
-  prior$a.beta.prec<-a.beta.prec
-  if(is.null(b.beta.prec)){
+  prior$a.beta.prec<-a.tau
+  if(is.null(b.tau)){
     prior$b.beta.prec<-1/data$n
   } else{
-  prior$b.beta.prec<-b.beta.prec
+  prior$b.beta.prec<-b.tau
   }
   prior$maxBasis<-maxBasis
   prior$minInt<-0
