@@ -26,7 +26,7 @@
 #' @param b.tau rate for gamma prior on \eqn{\tau}. Defaults to one over the number of observations, which centers the prior for the basis function weights on the unit information prior.
 #' @param w1 nominal weight for degree of interaction, used in generating candidate basis functions.  Should be greater than 0.
 #' @param w2 nominal weight for variables, used in generating candidate basis functions.  Should be greater than 0.
-#' @param temp.ladder temperature ladder used for parallel tempering.  The first value should be 1 and the values should decrease.
+#' @param temp.ladder (inverse) temperature ladder used for parallel tempering.  The first value should be 1 and the values should decrease.
 #' @param start.temper when to start tempering (after how many MCMC iterations).
 #' @param curr.list list of starting models (one element for each temperature), could be output from a previous run under the same model setup.
 #' @param save.yhat logical; should predictions of training data be saved?

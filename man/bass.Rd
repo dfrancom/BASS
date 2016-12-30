@@ -54,7 +54,7 @@ bass(xx, y, maxInt = 3, maxInt.func = 3, maxInt.cat = 3, xx.func = NULL,
 
 \item{w2}{nominal weight for variables, used in generating candidate basis functions.  Should be greater than 0.}
 
-\item{temp.ladder}{temperature ladder used for parallel tempering.  The first value should be 1 and the values should decrease.}
+\item{temp.ladder}{(inverse) temperature ladder used for parallel tempering.  The first value should be 1 and the values should decrease.}
 
 \item{start.temper}{when to start tempering (after how many MCMC iterations).}
 
