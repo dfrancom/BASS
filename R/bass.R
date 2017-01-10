@@ -26,8 +26,8 @@
 #' @param b.tau rate for gamma prior on \eqn{\tau}. Defaults to one over the number of observations, which centers the prior for the basis function weights on the unit information prior.
 #' @param w1 nominal weight for degree of interaction, used in generating candidate basis functions.  Should be greater than 0.
 #' @param w2 nominal weight for variables, used in generating candidate basis functions.  Should be greater than 0.
-#' @param temp.ladder (inverse) temperature ladder used for parallel tempering.  The first value should be 1 and the values should decrease.
-#' @param start.temper when to start tempering (after how many MCMC iterations).
+#' @param temp.ladder temperature ladder used for parallel tempering.  The first value should be 1 and the values should increase.
+#' @param start.temper when to start tempering (after how many MCMC iterations). Defaults to 1000 or half of burn-in, whichever is smaller.
 #' @param curr.list list of starting models (one element for each temperature), could be output from a previous run under the same model setup.
 #' @param save.yhat logical; should predictions of training data be saved?
 #' @param verbose logical; should progress be displayed?
@@ -167,19 +167,25 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   if(is.null(temp.ladder)){
     temp.ladder<-1
   }
-  if(min(temp.ladder)<(2/dx[1])){
-    temp.ladder<-temp.ladder[temp.ladder>(2/dx[1])]
+  if(max(temp.ladder)>(dx[1]/2)){
+    temp.ladder<-temp.ladder[temp.ladder<(dx[1]/2)]
     if(length(temp.ladder)==0)
-      stop('invalid temp.ladder (temperatures too small)')
+      stop('invalid temp.ladder (temperatures too high)')
   }
-  if(max(temp.ladder)!=1)
-    warning('max(temp.ladder) should equal 1')
+  if(min(temp.ladder)!=1)
+    warning('min(temp.ladder) should equal 1')
   ntemps<-length(temp.ladder)
   if(ntemps==1){
     start.temper<-nmcmc
   }
+  if(is.null(start.temper))
+    start.temper<-min(1000,ceiling(nburn*.5))
   temp.val<-matrix(nrow=nmcmc,ncol=ntemps)
 
+  if(any(temp.ladder<=0))
+    stop('temp.ladder must be greater than 0 (should be greater than 1)')
+  if(any(temp.ladder<1))
+    warning('temp.ladder should be greater than 1')
 
   ## make a data object
 
@@ -228,7 +234,7 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   data$birth.prob<-1/3
   data$birth.prob.last<-1/3
   data$death.prob<-1/3
-  data$temp.ladder<-temp.ladder
+  data$itemp.ladder<-1/temp.ladder
   
   
   ## make a prior object
@@ -313,18 +319,18 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
       curr.list[[i]]$knotInd.des<-matrix(integer(0),ncol=maxInt.des)
       curr.list[[i]]$signs.des<-matrix(integer(0),ncol=maxInt.des)
       curr.list[[i]]$vars.des<-matrix(integer(0),ncol=maxInt.des)
-      curr.list[[i]]$n.int.des<-NA
+      curr.list[[i]]$n.int.des<-0
 
       curr.list[[i]]$sub.list<-list()
       curr.list[[i]]$sub.size<-matrix(integer(0),ncol=maxInt.cat)
       curr.list[[i]]$vars.cat<-matrix(integer(0),ncol=maxInt.cat)
-      curr.list[[i]]$n.int.cat<-NA
+      curr.list[[i]]$n.int.cat<-0
 
       curr.list[[i]]$knots.func<-matrix(numeric(0),ncol=maxInt.func)
       curr.list[[i]]$knotInd.func<-matrix(integer(0),ncol=maxInt.func)
       curr.list[[i]]$signs.func<-matrix(integer(0),ncol=maxInt.func)
       curr.list[[i]]$vars.func<-matrix(integer(0),ncol=maxInt.func)
-      curr.list[[i]]$n.int.func<-NA
+      curr.list[[i]]$n.int.func<-0
 
       curr.list[[i]]$Xty<-rep(NA,maxBasis+2)
       curr.list[[i]]$Xty[1]<-sum(data$y)
@@ -383,7 +389,7 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   # temperature index
   cold.chain<-1 # to start, the cold chain is curr.list[[1]]
   temp.ind<-1:ntemps # we will change this vector as we swap temperatures
-  count.swap<-count.swap.disp<-rep(0,ntemps-1) # number of swaps between each set of neighbors
+  count.swap<-count.swap.prop<-rep(0,ntemps-1) # number of swaps between each set of neighbors
   swap<-NA # to keep track of swaps
   #require(parallel) # for tempering
 
@@ -411,11 +417,12 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
       temp.ind.swap2<-temp.ind.swap1+1 # always use the neighboring chain on the right
       chain.ind1<-which(temp.ind==temp.ind.swap1) # which chain has temperature temp.ladder[temp.ind.swap1]
       chain.ind2<-which(temp.ind==temp.ind.swap2)
-      alpha.swap<-(data$temp.ladder[temp.ind.swap1]-data$temp.ladder[temp.ind.swap2])*(curr.list[[chain.ind2]]$lpost-curr.list[[chain.ind1]]$lpost)
+      alpha.swap<-(data$itemp.ladder[temp.ind.swap1]-data$itemp.ladder[temp.ind.swap2])*(curr.list[[chain.ind2]]$lpost-curr.list[[chain.ind1]]$lpost)
       if(is.nan(alpha.swap) | is.na(alpha.swap)){
         alpha.swap<- -9999
-        warning('Small values of temp.ladder too small')
+        warning('large values of temp.ladder too large')
       }
+      count.swap.prop[temp.ind.swap1]<-count.swap.prop[temp.ind.swap1]+1
       if(log(runif(1)) < alpha.swap){
         # swap temperatures
         temp.ind[chain.ind1]<-temp.ind.swap2
@@ -424,7 +431,6 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
         curr.list[[chain.ind2]]$temp.ind<-temp.ind.swap1
 
         count.swap[temp.ind.swap1]<-count.swap[temp.ind.swap1]+1
-        count.swap.disp[temp.ind.swap1]<-count.swap.disp[temp.ind.swap1]+1
         swap[i]<-temp.ind.swap1
         if(temp.ind.swap1==1){
           cmod<-T # we changed models
@@ -490,9 +496,8 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     if(verbose & i%%1000==0){
       pr<-c('MCMC iteration',i,timestamp(prefix='#--',suffix='--#',quiet=T),'nbasis:',curr.list[[cold.chain]]$nbasis)
       if(i>start.temper)
-        pr<-c(pr,'tempering acc',count.swap.disp/(1000/(ntemps-1))) # swap acceptance rate for last 1000
+        pr<-c(pr,'tempering acc',round(count.swap/count.swap.prop,3)) # swap acceptance rate
       cat(pr,'\n')
-      count.swap.disp<-rep(0,ntemps-1) # reset after displaying
     }
 
   }
@@ -521,7 +526,9 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
        curr.list=curr.list, # for restarting
        swap=swap,
        count.swap=count.swap,
+       count.swap.prop=count.swap.prop,
        temp.val=temp.val,
+       temp.ladder=temp.ladder,
        n.models=n.models,
        model.lookup=model.lookup,
        des=des,func=func,cat=cat,type=type,cx=cx

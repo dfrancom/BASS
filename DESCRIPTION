@@ -1,6 +1,6 @@
 Package: BASS
-Version: 0.1.0
-Date: 2016-12-15
+Version: 0.2.0
+Date: 2016-1-15
 Title: Bayesian Adaptive Spline Surfaces
 Description: Bayesian fitting and sensitivity analysis methods for adaptive
     spline surfaces. Built to handle continuous and categorical inputs as well as
@@ -10,4 +10,6 @@ Authors@R: c(person("Devin", "Francom", role = c("aut", "cre"), email = "devinfr
               person("Bruno", "Sanso", role = "ths"),
               person("Agner", "Fog", role = c("ctb","cph")))
 License: GPL-3
+Suggests: R.rsp
+VignetteBuilder: R.rsp
 RoxygenNote: 5.0.1.9000

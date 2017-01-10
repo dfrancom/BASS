@@ -656,7 +656,7 @@ VuInt_des_func<-function(u,tl){
     ind<-((sum(tl$cs.num.ind[l-1])+1):tl$cs.num.ind[l])[apply(tl$combs[[l]],2,function(x) all(x%in%u))] # this gets index for which combs are subsets of u, sum() makes it 0 when it should be 
     add<-add+(-1)^(len-l)*apply(tl$integrals[,ind,,drop=F],c(1,3),sum)
   }
-  add[abs(add)<1e-15]<-0
+  add[abs(add)<1e-13]<-0
   if(any(add<0))
     browser()
   return(add)

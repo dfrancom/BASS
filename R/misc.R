@@ -3,12 +3,12 @@
 ########################################################################
 
 ## sample a tempered gamma
-rgammaTemper<-function(n,shape,rate,temper){ 
-  rgamma(n,temper*(shape-1)+1,temper*rate)
+rgammaTemper<-function(n,shape,rate,itemper){ 
+  rgamma(n,itemper*(shape-1)+1,itemper*rate)
 }
 ## sample a tempered IG
-rigammaTemper<-function(n,shape,scale,temper){ 
-  1/rgamma(n,temper*(shape+1)-1,rate=temper*scale)
+rigammaTemper<-function(n,shape,scale,itemper){ 
+  1/rgamma(n,itemper*(shape+1)-1,rate=itemper*scale)
 }
 
 ## scale a vector to be between 0 and 1
