@@ -398,7 +398,7 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   ## MCMC
 
   if(verbose)
-    cat('MCMC Start',timestamp(prefix='#--',suffix='--#',quiet=T),'nbasis:',curr.list[[cold.chain]]$nbasis,'\n')
+    cat('MCMC Start',myTimestamp(),'nbasis:',curr.list[[cold.chain]]$nbasis,'\n')
   n.models<-keep.sample<-0 # indexes for storage
   for(i in 2:nmcmc){
 
@@ -494,7 +494,7 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     }
 
     if(verbose & i%%1000==0){
-      pr<-c('MCMC iteration',i,timestamp(prefix='#--',suffix='--#',quiet=T),'nbasis:',curr.list[[cold.chain]]$nbasis)
+      pr<-c('MCMC iteration',i,myTimestamp(),'nbasis:',curr.list[[cold.chain]]$nbasis)
       if(i>start.temper)
         pr<-c(pr,'tempering acc',round(count.swap/count.swap.prop,3)) # swap acceptance rate
       cat(pr,'\n')

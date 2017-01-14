@@ -1,3 +1,7 @@
+# BASS 0.2.1
+- removed uses of timestamp to avoid a bug in Rstudio on Windows
+- corrected example to use temperatures rather than inverse temperatures, and to match vignette
+
 # BASS 0.2.0
 - vignette added
 - argument changes

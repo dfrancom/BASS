@@ -91,7 +91,7 @@ y<-rnorm(n,f(x),sigma)
 mod<-bass(x,y)
 plot(mod)
 ## fit BASS, tempering
-mod<-bass(x,y,temp.ladder=c(1,.8,.65,.5,.4,.3,.23,.15,.1),start.temper=1000)
+mod<-bass(x,y,temp.ladder=1.3^(0:8),start.temper=1000)
 plot(mod)
 
 ## prediction

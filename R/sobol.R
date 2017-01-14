@@ -104,7 +104,7 @@ sobol_des<-function(bassMod,mcmc.use,verbose){
   sob<-array(0,dim=c(length(mcmc.use),sum(num.ind)))
 
   if(verbose)
-    cat('Sobol Start',timestamp(prefix='#--',suffix='--#',quiet=T),'Models:',length(unique(models)),'\n')
+    cat('Sobol Start',myTimestamp(),'Models:',length(unique(models)),'\n')
 
   i<-1
   mod.count<-0
@@ -152,7 +152,7 @@ sobol_des<-function(bassMod,mcmc.use,verbose){
 
 
       if(verbose & mod.count%%10==0)
-        cat('Sobol',timestamp(prefix='#--',suffix='--#',quiet=T),'Model:',mod.count,'\n')
+        cat('Sobol',myTimestamp(),'Model:',mod.count,'\n')
 
 
     }
@@ -163,7 +163,7 @@ sobol_des<-function(bassMod,mcmc.use,verbose){
 
   
   if(verbose)
-    cat('Total Sensitivity',timestamp(prefix='#--',suffix='--#',quiet=T),'\n')
+    cat('Total Sensitivity',myTimestamp(),'\n')
 
   tot<-getTot(combs,sob,names.ind,p,maxInt.tot,allCombs$aa)
   
@@ -218,7 +218,7 @@ sobol_des_func<-function(bassMod,mcmc.use,verbose,func.var,xx.func.var){
   sob<-sob2<-array(0,dim=c(length(mcmc.use),sum(num.ind),length(xx.func.var)))
 
   if(verbose)
-    cat('Sobol Start',timestamp(prefix='#--',suffix='--#',quiet=T),'Models:',length(unique(models)),'\n')
+    cat('Sobol Start',myTimestamp(),'Models:',length(unique(models)),'\n')
 
   i<-1
   mod.count<-0
@@ -282,7 +282,7 @@ sobol_des_func<-function(bassMod,mcmc.use,verbose,func.var,xx.func.var){
       i<-i+length(mcmc.use.mod) # for index
       
       if(verbose & mod.count%%10==0)
-        cat('Sobol',timestamp(prefix='#--',suffix='--#',quiet=T),'Model:',mod.count,'\n')
+        cat('Sobol',myTimestamp(),'Model:',mod.count,'\n')
     }
   }
   
