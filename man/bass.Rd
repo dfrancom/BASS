@@ -9,7 +9,7 @@ bass(xx, y, maxInt = 3, maxInt.func = 3, maxInt.cat = 3, xx.func = NULL,
   nmcmc = 10000, nburn = 9000, thin = 1, g1 = 0, g2 = 0, h1 = 10,
   h2 = 10, a.tau = 1, b.tau = NULL, w1 = 5, w2 = 5,
   temp.ladder = NULL, start.temper = NULL, curr.list = NULL,
-  save.yhat = TRUE, verbose = TRUE)
+  save.yhat = TRUE, small = FALSE, verbose = TRUE)
 }
 \arguments{
 \item{xx}{a data frame or matrix of predictors.  Categorical predictors should be included as factors.}
@@ -61,6 +61,8 @@ bass(xx, y, maxInt = 3, maxInt.func = 3, maxInt.cat = 3, xx.func = NULL,
 \item{curr.list}{list of starting models (one element for each temperature), could be output from a previous run under the same model setup.}
 
 \item{save.yhat}{logical; should predictions of training data be saved?}
+
+\item{small}{logical; if true, returns a smaller object by leaving out \code{curr.list} and other unnecessary objects.  Use in combination with \code{save.yhat} to get smaller memory footprint for very large models.}
 
 \item{verbose}{logical; should progress be displayed?}
 }
