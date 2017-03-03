@@ -3,6 +3,7 @@
 #' @description Print some of the details of a BASS model. 
 #' @param x a \code{bass} object, returned from \code{bass}.
 #' @param ... further arguments passed to or from other methods.
+#' @export
 #'
 print.bass<-function(x,...){
   cat("\nCall:\n",deparse(x$call),'\n')
@@ -35,6 +36,7 @@ print.bass<-function(x,...){
 #' @description Summarize some of the details of a BASS model. 
 #' @param object a \code{bass} object, returned from \code{bass}.
 #' @param ... further arguments passed to or from other methods.
+#' @export
 #'
 summary.bass<-function(object,...){
   cat("\nCall:\n",deparse(object$call),'\n')

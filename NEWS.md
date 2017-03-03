@@ -1,5 +1,5 @@
 # BASS 0.2.2
-- added print and methods generics for bass objects
+- added print and summary methods for bass objects
 
 # BASS 0.2.1
 - added "small" parameter to allow for smaller memory footprint
