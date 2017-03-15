@@ -57,7 +57,7 @@ lp<-function(curr,prior,data){
     return(tt)
   }
   #priors for basis parameters
-  if(data$des){ # should these be involved in tempering??
+  if(F){#(data$des){ # should these be involved in tempering??
     tt<-tt+(
       - sum(curr$n.int.des)*log(2) # signs for each basis function
       - sum(lchoose(data$pdes,curr$n.int.des)) # variables for each basis function
@@ -65,7 +65,7 @@ lp<-function(curr,prior,data){
       - curr$nbasis*log(prior$maxInt.des) # degree of interaction for each basis function
     )
   }
-  if(data$cat){
+  if(F){#(data$cat){
     tt<-tt+(
       - sum(sapply(1:curr$nbasis,function(i) curr$n.int.cat[i]*sum(log(data$nlevels[na.omit(curr$vars.cat[i,])]-1))))
       - sum(sapply(1:curr$nbasis,function(i) sum(lchoose(data$nlevels[na.omit(c(curr$vars.cat[i,]))],curr$sub.size[i,1:curr$n.int.cat[i]]))))
@@ -73,7 +73,7 @@ lp<-function(curr,prior,data){
       - curr$nbasis*log(prior$maxInt.cat)
     )
   }
-  if(data$func){
+  if(F){#(data$func){
     tt<-tt+(
       - sum(curr$n.int.func)*log(2)
       - sum(lchoose(data$pfunc,curr$n.int.func))

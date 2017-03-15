@@ -21,7 +21,7 @@ y <- matrix(f(cbind(rep(x.func, each = n),
 @
 
 The functional data can be plotted as follows and are shown in Figure \ref{fig:ex4plot1}.
-<<ex4plot1, fig.height=6, fig.width=8, out.width='.5\\linewidth', fig.cap='500 Functional responses.  The goal is to fit a functional nonparametric regression model and perform sensitivity analysis.'>>=
+<<ex4plot1, fig.height=6*.7, fig.width=8*.7, out.width='.5\\linewidth', fig.cap='500 Functional responses.  The goal is to fit a functional nonparametric regression model and perform sensitivity analysis.'>>=
 matplot(x.func, t(y), type='l')
 @
 In order for the \pkg{BASS} package to handle functional responses, each curve needs to be evaluated on the same grid.  Thus, the responses must be able to be stored as a matrix without missing values.
@@ -39,7 +39,7 @@ pred <- predict(mod, x.test)
 @
 
 Following, we make a functional predicted versus observed plot, shown in Figure \ref{fig:ex4plot2}
-<<ex4plot2, fig.cap='BASS prediction performance - Friedman function with functional response.'>>=
+<<ex4plot2, fig.cap='BASS prediction performance - Friedman function with functional response.', fig.height=6*.7, fig.width=6*.7>>=
 fx.test<-matrix(f(cbind(rep(x.func, each = n.test), 
                         kronecker(rep(1, n.func), x.test))), ncol=n.func)
 matplot(fx.test, apply(pred, 2:3, mean), type = 'l')
@@ -51,7 +51,7 @@ We will demonstrate the two methods of sensitivity analysis discussed in Section
 sens <- sobol(mod, mcmc.use = 1:100)
 @
 When we plot the variance decomposition, as shown in Figure \ref{fig:ex4plot3}, the functional variable is labeled with the letter ``a."  If we had multiple functional variables, they would be labeled with different letters.
-<<ex4plot3, fig.height=6, fig.width=12, out.width='.8\\linewidth', fig.cap='Sensitivity analysis - Friedman function with functional response.'>>=
+<<ex4plot3, fig.height=6*.7, fig.width=12*.7, out.width='.8\\linewidth', fig.cap='Sensitivity analysis - Friedman function with functional response.'>>=
 plot(sens, cex.axis = .5)
 @
 
@@ -60,7 +60,7 @@ The other approach to sensitivity analysis is to get a functional variance decom
 sens.func <- sobol(mod, mcmc.use = 1:100, func.var = 1)
 @
 When we plot the variance decomposition, shown in Figure \ref{fig:ex4plot4}, we we get two plots.  
-<<ex4plot4, fig.height=6, fig.width=12, out.width='.8\\linewidth', fig.cap='Functional sensitivity analysis - Friedman function with functional response.'>>=
-plot(sens.func, cex = .5)
+<<ex4plot4, fig.height=6*.7, fig.width=12*.7, out.width='.8\\linewidth', fig.cap='Functional sensitivity analysis - Friedman function with functional response.'>>=
+plot(sens.func)
 @
 The left plot shows the posterior mean (using posterior samples specified with \code{mcmc.use}) of the functional sensitivity indices in a functional pie chart.  The right plot shows the variance decomposition as a function of the functional variable.  Thus, the top line in the right plot is the total variance in $y$ as a function of $x_1$.  The bottom line (black) is the total variance explained by the main effect of $x_2$ as a function of $x_1$.  The labels in the plot on the left are the variable numbers (columns of \code{x}).

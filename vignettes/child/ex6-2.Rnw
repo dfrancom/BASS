@@ -114,8 +114,8 @@ With this amount of data, we are presented with an extremely large model space t
 
 Using such an extreme prior makes our multimodal posterior more peaked, and more difficult to explore.  We may need hundreds of chains running at different temperatures in order to get the temperatures close enough to eachother to allow for frequent swapping.  Another possibility that does not require picking a temperature ladder is to instead run multiple cold chains (at the true posterior) and allow them to swap states.  This is a version of parallel hierarchical sampling introduced in \cite{rigat2012parallel} that can be easily implemented by setting \code{temp.ladder = rep(1, n.chains)}.
 <<c6-4, cache=T, dependson='c6-3'>>=
-mod <- bass(x, y, xx.func = x.func, nmcmc = 110, nburn = 100, 
-            thin = 1, h2 = 1e250, save.yhat = F, temp.ladder = rep(1, 10), 
+mod <- bass(x, y, xx.func = x.func, nmcmc = 110000, nburn = 100000, 
+            thin = 10, h2 = 1e250, save.yhat = F, temp.ladder = rep(1, 10), 
             npart.func = 1, verbose = F, maxBasis = 175)
 @
 Note that we specify \code{save.yhat = F}.  By default, the \code{bass} function saves in-sample predictions for all MCMC samples (post burn-in and thinned).  This can be a sigificant storage burden when we have large amounts of functional data, as we do in this case.  Changing the \code{save.yhat} parameter can relieve this.  If in-sample predictions are of interest, they can be obtained after model fitting using the \code{predict} function.
@@ -129,13 +129,13 @@ y.test <- log(t(apply(x.test, 1, environ, s = s, t = t)) + .01)
 pred <- predict(mod, x.test)
 @
 A plot of the predicted (mean function) versus observed data is shown in Figure \ref{fig:ex6plot1}.
-<<ex6plot1, fig.cap='BASS prediction performance - pollutant spill model.',dev='png'>>=
+<<ex6plot1, fig.cap='BASS prediction performance - pollutant spill model.',dev='png', fig.height=6*.7, fig.width=6*.7>>=
 plot(y.test, apply(pred, 2:3, mean))
 abline(a = 0, b = 1, col = 2)
 @
 
 To see what the predictions look like in space and time, consider the plots shown in Figure \ref{fig:ex6plot2}.  These show posterior draws (in grey) of the mean function for one setting of the four inputs along with simulator output (in red).
-<<ex6plot2, fig.height=10, fig.width=12, out.width='\\linewidth', fig.cap='BASS prediction in space and time - pollutant spill model.'>>=
+<<ex6plot2, fig.height=10*.7, fig.width=12*.7, out.width='\\linewidth', fig.cap='BASS prediction in space and time - pollutant spill model.'>>=
 pp <- pred[, 1, ]
 ylim <- range(y)
 par(mfrow=c(2, 3))
@@ -148,7 +148,7 @@ for(i in 1:length(s)) {
 @
 
 We can use the sensitivity analysis methods above, but we can get Sobol' indices as a function of either space or time.  Below, we show how to get them as a function of time.  We limit the models considered using \code{mcmc.use} to speed up computations.  Since we have two functional inputs, we have two letters that can be included in these sensitivity plots (functional inputs are labeled with letters).  Note that variable four is not included.  This is because it did not explain any variance.
-<<ex6plot3, cache=T, fig.height=6, fig.width=12, out.width='.8\\linewidth', fig.cap='Sensitivity indices as a function of time - pollutant spill model.'>>=
+<<ex6plot3, cache=T, fig.height=6*.7, fig.width=12*.7, out.width='.8\\linewidth', fig.cap='Sensitivity indices as a function of time - pollutant spill model.'>>=
 sens.func1 <- sobol(mod, mcmc.use = 1,#seq(1, 1000, 100),
                     func.var = 1, xx.func.var = t, verbose = F)
 plot(sens.func1)

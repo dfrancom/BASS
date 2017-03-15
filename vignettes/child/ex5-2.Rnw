@@ -17,7 +17,7 @@ y <- dd[-test, 6]
 @
 We fit a BASS model using tempering.
 <<c5-2, cache=T, dependson='c5-1'>>=
-mod <- bass(x, y, nmcmc = 20, nburn = 10, thin = 1, 
+mod <- bass(x, y, nmcmc = 20000, nburn = 10000, thin = 10, 
             temp.ladder = 1.1^(0:5), verbose = F)
 @
 We can predict as we have before.  However, this prediction is for the mean function.
@@ -35,14 +35,14 @@ mean((q1 < y.test) & (q2 > y.test))
 @
 This puts our empirical coverage where we would expect it to be.
 We can plot our 95\% prediction intervals as follows, shown in Figure \ref{fig:ex5plot1}.
-<<ex5plot1, fig.cap='Prediction performance - air foil data.'>>=
+<<ex5plot1, fig.cap='Prediction performance - air foil data.',fig.height=6*.7, fig.width=6*.7>>=
 plot(y.test, colMeans(pred))
 abline(a = 0, b = 1, col = 2)
 segments(y.test, q1, y.test, q2, col = 'lightgrey')
 @
 
 Next, we can obtain and plot the Sobol' decomposition, shown in Figure \ref{fig:ex5plot2}.
-<<ex5plot2, cache=T, fig.height=6, fig.width=12, out.width='.8\\linewidth', fig.cap='Sobol decomposition - air foil data.'>>=
+<<ex5plot2, cache=T, fig.height=6*.7, fig.width=12*.7, out.width='.8\\linewidth', fig.cap='Sobol decomposition - air foil data.'>>=
 sens <- sobol(mod, verbose = F)
 plot(sens)
 @

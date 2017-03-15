@@ -48,7 +48,7 @@ updateMCMC<-function(curr,prior,data,funcs=funcs){
     #browser()
     curr$s2<-runif(1,0,1e6)
     prior$g2<-prior$g2+1
-    warning('Small temperature too small...increased g2 for numerical stability')
+    warning('High temperature too high...increased g2 for numerical stability')
   }
   
   # beta.prec

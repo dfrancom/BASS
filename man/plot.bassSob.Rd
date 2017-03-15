@@ -4,7 +4,7 @@
 \alias{plot.bassSob}
 \title{Plot BASS sensitivity indices}
 \usage{
-\method{plot}{bassSob}(x, ...)
+plot.bassSob(x, ...)
 }
 \arguments{
 \item{x}{a \code{bassSob} object, returned from \code{sobol}.}

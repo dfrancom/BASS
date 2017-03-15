@@ -75,11 +75,13 @@ knitr::render_sweave()
 
 The purpose of the \proglang{R} \citep{R} package \pkg{BASS} \citep{BASS} is to provide an easy-to-use implementation of Bayesian adaptive spline models for nonparametric regression.  It provides a combination of flexibility, scalability, interpretability and probabilistic accuracy that can be difficult to find in other nonparametric regression software packages.  The model form is flexible enough to capture local features that may be present in the data.  It is scalable to moderately large datasets in both the number of predictors and the number of observations.  It performs automatic variable selection.  It can build nonparametric functional regression models and incorporate categorical predictors.  The package can partition the variability of a resultant model using a nonlinear ANOVA decomposition, providing valuable interpretation to the predictors.  The Bayesian approach allows for model estimates and predictions that can be evaluated probabilistically. The package is  protected under the GNU General Public License, version 3 (GPL-3), and is available from the Comprehensive \proglang{R} Archive Network (CRAN) at \url{https://CRAN.R-project.org/package=BASS}.
 
-The BASS framework builds on multivariate adaptive regression splines (MARS) from \cite{friedman1991multivariate}.  A well-developed software implementation of the MARS model is available in the \proglang{R} package \pkg{earth} \citep{earth}.  The Bayesian version of MARS (BMARS) was first developed in \cite{denison1998bayesian}.  A \proglang{MATLAB} implementation of BMARS is available from the software website accompanying \cite{denison2002bayesian}.  
+The BASS framework builds on multivariate adaptive regression splines (MARS) from \cite{friedman1991multivariate}.  Well-developed software implementations of the MARS model are available in the \proglang{R} packages \pkg{earth}, \pkg{polspline} and \pkg{mda}.  The Bayesian version of MARS (BMARS) was first developed in \cite{denison1998bayesian}.  A \proglang{MATLAB} implementation of BMARS is available from the software website accompanying \cite{denison2002bayesian}.  
 
 Our implementation is more similar to the BMARS implementation, though with some substantial changes to methodology as described in \cite{francom2016sensitivity}.  The primary motivation for developing this software was building surrogate models (or emulators) for complex and computationally expensive simulators (or computer models).  In particular, we wanted to build a fast and accurate surrogate model to use for uncertainty quantification in the presence of a large number of simulations and where each simulation had functional output.  Attributing the variance in the response of the surrogate to different combinations of predictors, a practice known as sensitivity analysis, is a valuable tool for determining which predictors and interactions are important.  One of the major benefits of polynomial spline surrogate models is that sensitivity analysis can be done analytically.  The \pkg{BASS} package has this functionality for scalar and functional response models.
 
-We introduce the package as follows.  In Section \ref{sec:BASS}, we describe the modeling framework, including our methods for posterior sampling, modeling functional responses, and incorporating categorical inputs.  In Section \ref{sec:SA}, we describe the sensitivity analysis methods.  Then, in Section \ref{sec:ex}, we walk through six examples of how to use the package.  These are done with \pkg{knitr} in order to be reproducible by the reader.  Finally, in Section \ref{sec:summary}, present a summary of the package capabilities.
+There are a number of other \proglang{R} packages that use splines, such as \pkg{crs}, \pkg{gss}, \pkg{mgcv} and \pkg{R2BayesX}, the latter two of which include possible Bayesian inference methods.  These packages allow (or require) the user to specify which variables are allowed to interact in what way, as well as which variables are allowed to have nonlinear main effects. The \pkg{crs} package is more similar to the packages that fit MARS models in that it can learn the structure of the model from the data.  These packages report a single best model.  \pkg{BASS} reports an ensemble of models (posterior draws from the model space) that can be used to make probabilistic predictions.  In this way, it is more similar to Bayesian nonparametric regression packages like \pkg{BayesTree} and \pkg{tgp}.
+
+We introduce the package as follows.  In Section \ref{sec:BASS}, we describe the modeling framework, including our methods for posterior sampling, modeling functional responses, and incorporating categorical inputs.  In Section \ref{sec:SA}, we describe the sensitivity analysis methods.  Then, in Section \ref{sec:ex}, we walk through six examples of how to use the package.  These are done with \pkg{knitr} in order to be reproducible by the reader.  Finally, in Section \ref{sec:summary}, we present a summary of the package capabilities.
 
 \section{Bayesian adaptive spline surfaces}
 \label{sec:BASS}
@@ -250,28 +252,28 @@ library("BASS")
 which we use for all the examples.
 
 \subsection{Curve fitting}
-<<child='ex1-2.Rnw'>>=
+<<child='child/ex1-2.Rnw'>>=
 @
 
 \subsection{Friedman function}
-<<child='ex2-2.Rnw'>>=
+<<child='child/ex2-2.Rnw'>>=
 @
 
 \subsection{Friedman function with a categorical variable}
-<<child='ex3-2.Rnw'>>=
+<<child='child/ex3-2.Rnw'>>=
 @
 
 \subsection{Friedman function with functional response}
-<<child='ex4-2.Rnw'>>=
+<<child='child/ex4-2.Rnw'>>=
 @
 
 \subsection{Air foil data}
 \label{sec:ex5}
-<<child='ex5-2.Rnw'>>=
+<<child='child/ex5-2.Rnw'>>=
 @
 
 \subsection{Pollutant spill model}
-<<child='ex6-2.Rnw'>>=
+<<child='child/ex6-2.Rnw'>>=
 @
 
 \section{Summary}

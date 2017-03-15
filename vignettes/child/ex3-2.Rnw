@@ -28,7 +28,7 @@ y <- rnorm(n, f(x), sigma)
 
 We fit a model with tempering and use it for prediction, as in the previous example.
 <<c3-2, cache=T, dependson='c3-1'>>=
-mod <- bass(x, y, nmcmc = 40, nburn = 30, thin = 1,
+mod <- bass(x, y, nmcmc = 40000, nburn = 30000, thin = 10,
             temp.ladder = (1 + .2)^(1:6 - 1), verbose = F)
 n.test <- 1000
 x.test <- data.frame(matrix(runif(n.test * 10), n.test, 10), 
@@ -49,7 +49,7 @@ sens <- sobol(mod)
 @
 
 Plotting the posterior distributions of the most important (explaining more than 0.5\% of the variance) sensitivity indices in Figure \ref{fig:ex3plot2}, we see how important the categorical variable is as well as which variables it interacts with.
-<<ex3plot2, fig.cap='Most important main effects and interactions - Friedman function with categorical predictor.'>>=
+<<ex3plot2, fig.cap='Most important main effects and interactions - Friedman function with categorical predictor.',fig.width=6*.7,fig.height=6*.7>>=
 boxplot(sens$S[, colMeans(sens$S) > .005], las = 2, 
         ylab = 'proportion variance', range = 0)
 @
