@@ -52,7 +52,7 @@
 %% need no \usepackage{Sweave.sty}
 
 %% end of declarations %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%\VignetteIndexEntry{}
+%\VignetteIndexEntry{1}
 %\VignetteEngine{knitr::knitr}
 
 \begin{document}
@@ -252,29 +252,29 @@ library("BASS")
 which we use for all the examples.
 
 \subsection{Curve fitting}
-<<child='child/ex1-2.Rnw'>>=
-@
+%<<child='child/ex1-2.Rnw'>>=
+%@
 
 \subsection{Friedman function}
-<<child='child/ex2-2.Rnw'>>=
-@
+%<<child='child/ex2-2.Rnw'>>=
+%@
 
 \subsection{Friedman function with a categorical variable}
-<<child='child/ex3-2.Rnw'>>=
-@
+%<<child='child/ex3-2.Rnw'>>=
+%@
 
 \subsection{Friedman function with functional response}
-<<child='child/ex4-2.Rnw'>>=
-@
+%<<child='child/ex4-2.Rnw'>>=
+%@
 
 \subsection{Air foil data}
 \label{sec:ex5}
-<<child='child/ex5-2.Rnw'>>=
-@
+%<<child='child/ex5-2.Rnw'>>=
+%@
 
 \subsection{Pollutant spill model}
-<<child='child/ex6-2.Rnw'>>=
-@
+%<<child='child/ex6-2.Rnw'>>=
+%@
 
 \section{Summary}
 \label{sec:summary}

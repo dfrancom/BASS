@@ -20,7 +20,7 @@ y <- rnorm(n, f(x), sigma)
 Here we will show how we can change the length of the MCMC chain and use parallel tempering.  We run the RJMCMC chain for 40000 iterations, discarding the first 30000 as burn-in and thinning by keeping every tenth sample.  We supply a temperature ladder with smallest value one (the ``cold chain", or true posterior) and largest value $8.15$ (the ``hottest" chain) using geometric spacing.  Thus, $t_i=(1+\Delta_t)^{i-1}$ where $\Delta_t$ is a spacing parameter we set at $0.3$.  We use nine chains.  By default, chains at neighboring temperatures will be allowed to swap after the first 1000 iterations.
 <<c2-2, cache=T, dependson='c2-1'>>=
 mod <- bass(x, y, nmcmc = 40000, nburn = 30000, thin = 10, 
-            temp.ladder = (1 + .3)^(1:9 - 1), verbose = F)
+            temp.ladder = (1 + .27)^(1:9 - 1), verbose = F)
 @
 
 We can generate posterior predictive samples just as we did in the curve fitting example.
@@ -81,8 +81,8 @@ We note that using the default prior for $\sigma^2$ with a temperature ladder wi
 
 To demonstrate what is different when we use tempering, consider the equivalent BASS model fit without tempering.
 <<c2-5, cache=T, dependson='c2-1'>>=
-mod.noTemp <- bass(x, y, nmcmc = 40, nburn = 30, 
-                   thin = 1, verbose = F)
+mod.noTemp <- bass(x, y, nmcmc = 40000, nburn = 30000, 
+                   thin = 10, verbose = F)
 @
 We compare the root mean square prediction error (RMSE) for the two models, as well as the empirical coverage of 95\% probability intervals.  First, the RMSE for the model fit without tempering
 <<c2-6, cache=T, dependson=c('c2-3','c2-5')>>=

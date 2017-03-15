@@ -1,6 +1,6 @@
 Package: BASS
 Version: 0.2.2
-Date: 2017-3-2
+Date: 2017-3-15
 Title: Bayesian Adaptive Spline Surfaces
 Description: Bayesian fitting and sensitivity analysis methods for adaptive
     spline surfaces. Built to handle continuous and categorical inputs as well as
