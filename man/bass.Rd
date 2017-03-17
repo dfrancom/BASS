@@ -155,4 +155,3 @@ mod<-bass(1:2,1:2,nmcmc=2,nburn=1)
 \keyword{nonparametric}
 \keyword{regression,}
 \keyword{splines,}
-

@@ -14,4 +14,3 @@
 \description{
 Summarize some of the details of a BASS model.
 }
-

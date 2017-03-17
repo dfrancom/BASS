@@ -37,6 +37,7 @@
 #' @keywords nonparametric regression, splines, functional data analysis
 #' @seealso \link{predict.bass} for prediction and \link{sobol} for sensitivity analysis.
 #' @export
+#' @useDynLib BASS, .registration = TRUE
 #' @import stats
 #' @import utils
 #' @example ../examples/examples.R

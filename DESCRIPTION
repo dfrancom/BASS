@@ -12,4 +12,4 @@ Authors@R: c(person("Devin", "Francom", role = c("aut", "cre"), email = "devinfr
 License: GPL-3
 Suggests: knitr
 VignetteBuilder: knitr
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1

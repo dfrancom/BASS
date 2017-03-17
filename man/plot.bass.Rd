@@ -26,4 +26,3 @@ The first two plots are trace plots for diagnosing convergence.  The third plot 
 \seealso{
 \link{bass}, \link{predict.bass}, \link{sobol}
 }
-

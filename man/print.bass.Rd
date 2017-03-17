@@ -14,4 +14,3 @@
 \description{
 Print some of the details of a BASS model.
 }
-
