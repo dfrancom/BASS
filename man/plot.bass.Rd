@@ -4,7 +4,7 @@
 \alias{plot.bass}
 \title{BASS Plot Diagnostics}
 \usage{
-\method{plot}{bass}(x, quants = c(0.025, 0.975), ...)
+plot.bass(x, quants = c(0.025, 0.975), ...)
 }
 \arguments{
 \item{x}{a \code{bass} object.}

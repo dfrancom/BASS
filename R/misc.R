@@ -11,6 +11,19 @@ rigammaTemper<-function(n,shape,scale,itemper){
   1/rgamma(n,itemper*(shape+1)-1,rate=itemper*scale)
 }
 
+## sample a truncated tempered IG
+rtigammaTemper<-function(n,shape,scale,itemper,lower){ 
+  1/rtgamma(n,1/lower,itemper*(shape+1)-1,rate=itemper*scale)
+}
+
+## sample from an upper-truncated gamma
+rtgamma<-function(n,upper,shape,rate){
+  out<-rep(upper,n)
+  if(pgamma(upper,shape=shape,rate=rate)>0) # if cdf at upper bound is positive, sample, otherwise use upper bound
+    out<-truncdist::rtrunc(n,'gamma',b=upper,shape=shape,rate=rate)
+  return(out)
+}
+
 ## scale a vector to be between 0 and 1
 scale.range<-function(x,r=NULL){ # x is a vector
   if(is.null(r))

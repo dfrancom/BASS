@@ -41,7 +41,8 @@ updateMCMC<-function(curr,prior,data,funcs=funcs){
     s2.b<-prior$g2+curr$s2.rate
     warning('Increased g2 for numerical stability')
   }
-  curr$s2<-rigammaTemper(1,s2.a,s2.b,data$itemp.ladder[curr$temp.ind])
+  #curr$s2<-rigammaTemper(1,s2.a,s2.b,data$itemp.ladder[curr$temp.ind])
+  curr$s2<-rtigammaTemper(1,s2.a,s2.b,data$itemp.ladder[curr$temp.ind],prior$s2.lower)
   if(is.nan(curr$s2) | is.na(curr$s2)) # major variance inflation, get huge betas from curr$R.inv.t, everything becomes unstable
     browser()
   if(curr$s2==0 | curr$s2>1e10){ # tempering instability, this temperature too small

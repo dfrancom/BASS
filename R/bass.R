@@ -20,6 +20,7 @@
 #' @param thin keep every \code{thin} samples
 #' @param g1 shape for IG prior on \eqn{\sigma^2}.
 #' @param g2 scale for IG prior on \eqn{\sigma^2}.
+#' @param s2.lower lower bound for s2. Turns IG prior for s2 into a truncated IG.
 #' @param h1 shape for gamma prior on \eqn{\lambda}.
 #' @param h2 rate for gamma prior on \eqn{\lambda}.  This is the primary way to control overfitting.  A large value of \code{h2} favors fewer basis functions.
 #' @param a.tau shape for gamma prior on \eqn{\tau}.
@@ -42,7 +43,7 @@
 #' @import utils
 #' @example ../examples/examples.R
 #'
-bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,h1=10,h2=10,a.tau=1,b.tau=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,curr.list=NULL,save.yhat=TRUE,small=FALSE,verbose=TRUE){
+bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,s2.lower=0,h1=10,h2=10,a.tau=1,b.tau=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,curr.list=NULL,save.yhat=TRUE,small=FALSE,verbose=TRUE){
 
   cl<-match.call()
   ########################################################################
@@ -84,6 +85,8 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
     stop('g1 and g2 must be greater than or equal to 0')
   if(any(c(h1,h2,a.tau,b.tau,w1,w2)<=0))
     stop('h1,h2,a.tau,b.tau,w1,w2 must be greater than 0')
+  if(s2.lower<0)
+    stop('s2.lower must be >= 0')
   
   ## process data
   if(any(is.na(xx)) | any(is.na(y)))
@@ -267,6 +270,7 @@ bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,ma
   prior$h2<-h2
   prior$g1<-g1
   prior$g2<-g2
+  prior$s2.lower<-s2.lower
   prior$a.beta.prec<-a.tau
   if(is.null(b.tau)){
     prior$b.beta.prec<-1/data$n

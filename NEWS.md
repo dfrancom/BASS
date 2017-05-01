@@ -1,3 +1,6 @@
+# BASS 0.2.3
+- added a lower bound parameter for the prior on s2 (the error variance)
+
 # BASS 0.2.2
 - added print and summary methods for bass objects
 

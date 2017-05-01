@@ -4,7 +4,7 @@
 \alias{summary.bass}
 \title{Summarize BASS Details}
 \usage{
-\method{summary}{bass}(object, ...)
+summary.bass(object, ...)
 }
 \arguments{
 \item{object}{a \code{bass} object, returned from \code{bass}.}
