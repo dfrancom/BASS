@@ -69,7 +69,14 @@ bass(xx, y, maxInt = 3, maxInt.func = 3, maxInt.cat = 3, xx.func = NULL,
 \item{verbose}{logical; should progress be displayed?}
 }
 \value{
-An object of class 'bass'.  The other output will only be useful to the advanced user.  Rather, users may be interested in prediction and sensitivity analysis, which are obtained by passing the entire object to the predict.bass or sobol functions.
+An object of class 'bass'.  Most other output will only be useful to the advanced user.  Rather, users may be interested in prediction and sensitivity analysis, which are obtained by passing the entire object to the predict.bass or sobol functions.  A few values that may be of interest:
+  \item{yhat}{a matrix (or array for function response models) of predictions of the training data for each saved posterior sample}
+  \item{yhat.mean}{the mean predictions of training data (averaged over posterior samples)}
+  \item{beta}{a matrix of weights on basis functions for each posterior sample}
+  \item{s2}{a vector of posterior samples of \eqn{\sigma^2}}
+  \item{nbasis}{a vector of posterior samples of M, the number of basis functions}
+  \item{lam}{a vector of posterior samples of \eqn{\lambda}}
+  \item{beta.prec}{a vector of posterior samples of \eqn{\tau}}
 }
 \description{
 Fits a BASS model using RJMCMC.  Optionally uses parallel tempering to improve mixing.  Can be used with scalar or functional response.  Also can use categorical inputs.

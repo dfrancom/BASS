@@ -133,6 +133,7 @@ A plot of the predicted (mean function) versus observed data is shown in Figure 
 plot(y.test, apply(pred, 2:3, mean))
 abline(a = 0, b = 1, col = 2)
 @
+We note that Figure \ref{fig:ex6plot1} indicates a departure from the assumption of Normally distributed (homoscedastic) residuals.  While this will affect the accuracy of our predictive variance, much of our interest tends to be in the mean function.  For example, the Sobol sensitivity analysis only considers the mean function, so departures from Normality (while predictive accuracy is reasonable) are unlikely to have a negative impact on the sensitivity analysis.  Departures from Normality are frequently addressed through transforming the response variable.  We have used the log transform, but plume models like this may deserve better thought out transformations, as in \cite{bliznyuk2008bayesian}.
 
 To see what the predictions look like in space and time, consider the plots shown in Figure \ref{fig:ex6plot2}.  These show posterior draws (in grey) of the mean function for one setting of the four inputs along with simulator output (in red).
 <<ex6plot2, fig.height=10*.7, fig.width=12*.7, out.width='\\linewidth', fig.cap='BASS prediction in space and time - pollutant spill model.'>>=

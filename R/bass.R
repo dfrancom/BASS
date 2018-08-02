@@ -34,14 +34,21 @@
 #' @param small logical; if true, returns a smaller object by leaving out \code{curr.list} and other unnecessary objects.  Use in combination with \code{save.yhat} to get smaller memory footprint for very large models.
 #' @param verbose logical; should progress be displayed?
 #' @details Explores BASS model space by RJMCMC.  The BASS model has \deqn{y = f(x) + \epsilon,  ~~\epsilon \sim N(0,\sigma^2)} \deqn{f(x) = a_0 + \sum_{m=1}^M a_m B_m(x)} and \eqn{B_m(x)} is a BASS basis function (tensor product of spline basis functions). We use priors \deqn{a \sim N(0,\sigma^2/\tau (B'B)^{-1})} \deqn{M \sim Poisson(\lambda)} as well as the priors mentioned in the arguments above.
-#' @return An object of class 'bass'.  The other output will only be useful to the advanced user.  Rather, users may be interested in prediction and sensitivity analysis, which are obtained by passing the entire object to the predict.bass or sobol functions.
+#' @return An object of class 'bass'.  Most other output will only be useful to the advanced user.  Rather, users may be interested in prediction and sensitivity analysis, which are obtained by passing the entire object to the predict.bass or sobol functions.  A few values that may be of interest:
+#'   \item{yhat}{a matrix (or array for function response models) of predictions of the training data for each saved posterior sample}
+#'   \item{yhat.mean}{the mean predictions of training data (averaged over posterior samples)}
+#'   \item{beta}{a matrix of weights on basis functions for each posterior sample}
+#'   \item{s2}{a vector of posterior samples of \eqn{\sigma^2}}
+#'   \item{nbasis}{a vector of posterior samples of M, the number of basis functions}
+#'   \item{lam}{a vector of posterior samples of \eqn{\lambda}}
+#'   \item{beta.prec}{a vector of posterior samples of \eqn{\tau}}
 #' @keywords nonparametric regression, splines, functional data analysis
 #' @seealso \link{predict.bass} for prediction and \link{sobol} for sensitivity analysis.
 #' @export
 #' @useDynLib BASS, .registration = TRUE
 #' @import stats
 #' @import utils
-#' @example ../examples/examples.R
+#' @example inst/examples/examples.R
 #'
 bass<-function(xx,y,maxInt=3,maxInt.func=3,maxInt.cat=3,xx.func=NULL,degree=1,maxBasis=1000,npart=NULL,npart.func=NULL,nmcmc=10000,nburn=9000,thin=1,g1=0,g2=0,s2.lower=0,h1=10,h2=10,a.tau=1,b.tau=NULL,w1=5,w2=5,temp.ladder=NULL,start.temper=NULL,curr.list=NULL,save.yhat=TRUE,small=FALSE,verbose=TRUE){
 

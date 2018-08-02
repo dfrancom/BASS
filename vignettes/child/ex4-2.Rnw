@@ -1,5 +1,5 @@
 
-Next, we consider an extension of the Friedman function that is functional in one variable \cite{francom2016sensitivity}. We use
+Next, we consider an extension of the Friedman function that is functional in one variable \cite{francom2018sensitivity}. We use
 \begin{align}
 f(\bx) &= 10\sin(2\pi x_1x_2) + 20(x_3-0.5)^2 + 10x_4 + 5x_5
 \end{align}

@@ -1,3 +1,7 @@
+# BASS 0.2.4
+- updated vignette
+- added more details to documentation
+
 # BASS 0.2.3
 - added a lower bound parameter for the prior on s2 (the error variance)
 
